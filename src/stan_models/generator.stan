@@ -48,7 +48,7 @@ generated quantities {
   vector[meal_count] meals;
   matrix[meal_count, N] time_delta;
   matrix[meal_count, N] impulses;
-  vector[N] cumulative_res;
+  vector[N] resp;
   vector[N] base_variation;
   base_variation = L * eta;
   y = base_variation;
@@ -57,8 +57,8 @@ generated quantities {
     time_delta[i] = to_row_vector(t_meas) - meals[i];
   }
   impulses = impulse(a, b, time_delta);
-  cumulative_res = cumulative_response(impulses, N, meal_count);
-  y += cumulative_res;
+  resp = cumulative_response(impulses, N, meal_count);
+  y += resp;
   y += baseline;
 
 }

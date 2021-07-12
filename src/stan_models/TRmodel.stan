@@ -98,11 +98,10 @@ model {
   
 
   //priors
-  lengthscale ~ inv_gamma(5, 5);
+  lengthscale ~ normal(5, 1);
   marg_std ~ std_normal();
-  a ~ std_normal();
-  b ~ std_normal();
   base ~ std_normal();
+  b ~ std_normal();
 
   //likelihood
   glucose ~ multi_normal_cholesky(mu, L);
@@ -110,7 +109,7 @@ model {
 
 generated quantities {
   real pred_x[pred_n] = pred_times;
-  vector[pred_n] pred_y =  draw_pred_rng(pred_times,
+  vector[pred_n] pred_y = draw_pred_rng(pred_times,
                      pred_meals,
                      glucose,
                      mu,
@@ -121,4 +120,17 @@ generated quantities {
                      a,
                      b,
                      base);
+  vector[0] empty;
+  vector[pred_n] baseline = draw_pred_rng(pred_times,
+                     empty,
+                     glucose,
+                     mu,
+                     time,
+                     marg_std,
+                     lengthscale,
+                     epsilon,
+                     a,
+                     b,
+                     base);
+  vector[pred_n] resp = response(pred_n, pred_mn, pred_times, pred_meals, a, b, base)-base;
 }

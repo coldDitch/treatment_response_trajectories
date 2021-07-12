@@ -1,7 +1,8 @@
 import cmdstanpy
 import numpy as np
+from config import SEED
 
-def generate_data(measurements_per_day=96, days=0.5, lengthscale=1, marg_std=1, baseline=3):
+def generate_data(measurements_per_day=96, days=2, lengthscale=1, marg_std=1, baseline=3, response_height=3, response_scale=1):
     bayesname = 'generator'
     bayespath = 'stan_models/' + bayesname + '.stan'
     num_data = int(measurements_per_day * days)
@@ -12,12 +13,12 @@ def generate_data(measurements_per_day=96, days=0.5, lengthscale=1, marg_std=1, 
         'marg_std': marg_std,
         'lengthscale': lengthscale,
         'baseline': baseline,
-        'a': 3,
-        'b': 0.5,
+        'a': response_height,
+        'b': response_scale,
         'meal_count': 8
     }
     model = cmdstanpy.CmdStanModel(stan_file=bayespath)
-    fit = model.sample(data=dat, output_dir='logs', fixed_param=True, chains=1)
+    fit = model.sample(data=dat, output_dir='logs', fixed_param=True, chains=1, seed=SEED)
     samples = {key: dat[0] for key, dat in fit.stan_variables().items()}
     samples['measurement_times'] = measurement_times
     samples['baseline'] = np.full(measurement_times.shape, baseline)
