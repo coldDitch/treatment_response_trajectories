@@ -3,29 +3,13 @@ import numpy as np
 from config import PARALELLIZE, ALGORITHM, MODELNAME, SEED
 
 def fit_model(data, test_data=None):
-    time, glucose, meal_timing = data['measurement_times'], data['y'], data['meals']
     bayesname = MODELNAME
     bayespath = 'stan_models/' + bayesname + '.stan'
-    pred_data = {}
-    if test_data:
-        pred_data['measurement_times'] = np.concatenate((data['measurement_times'], test_data['measurement_times']))
-        pred_data['meals'] = np.concatenate((data['meals'], test_data['meals']))
-    else:
-        ft = 12
-        pred_data['measurement_times']=np.linspace(np.min(time), np.max(time) + ft, time.shape[0]*2)
-        pred_data['meals']=data['meals']
-    print(pred_data.keys())
-    dat = {
-        'N': time.shape[0],
-        'time': time,
-        'glucose': glucose,
-        'n_meals': meal_timing.shape[0],
-        'meal_timing': meal_timing,
-        'pred_n': pred_data['measurement_times'].shape[0],
-        'pred_times': pred_data['measurement_times'],
-        'pred_mn': pred_data['meals'].shape[0],
-        'pred_meals': pred_data['meals']
-    }
+    pred_data = combine_to_prediction_data(data, test_data)
+    dat = data.copy()
+    dat.update(pred_data)
+    if 'nutrient' in bayesname:
+        handle_nutrients(dat, test_data)
     options = {"STAN_THREADS": True} if PARALELLIZE else None
     model = cmdstanpy.CmdStanModel(stan_file=bayespath, cpp_options=options)
     if ALGORITHM == 'mcmc':
@@ -37,3 +21,20 @@ def fit_model(data, test_data=None):
     else:
         raise Exception('not valid inference method')
     return fit
+
+def combine_to_prediction_data(data, test_data):
+    pred_data = {}
+    if test_data:
+        pred_data['pred_times'] = np.concatenate((data['time'], test_data['time']))
+        pred_data['pred_meals'] = np.concatenate((data['meal_timing'], test_data['meal_timing']))
+    else:
+        ft = 12
+        pred_data['pred_times']=np.linspace(np.min(time), np.max(time) + ft, time.shape[0]*2)
+        pred_data['pred_meals']=data['meal_timing']
+    pred_data['n_pred'] = pred_data['pred_times'].shape[0]
+    pred_data['n_meals_pred'] = pred_data['pred_meals'].shape[0]
+    return pred_data
+
+def handle_nutrients(dat, test_data):
+    dat['num_nutrients'] = dat['nutrients'].shape[1]
+    dat['pred_nutrients'] = np.concatenate((dat['nutrients'], test_data['nutrients']),axis=0)

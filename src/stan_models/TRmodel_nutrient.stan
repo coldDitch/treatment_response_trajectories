@@ -1,25 +1,39 @@
 functions {
-  vector impulse(real response_magnitude, real response_length, vector delta_t) {
-    return response_magnitude * exp(-0.5 * (delta_t - 3*response_length).^2 / response_length ^ 2);
+  matrix impulse(vector a, real response_length, matrix delta_t, matrix nutrients) {
+     int n_meals = rows(delta_t);
+     vector[cols(nutrients)] response_magnitude = nutrients * a;
+     matrix[n_meals, cols(delta_t)] shape = exp(-0.5 * (delta_t - 3*response_length).^2 / response_length ^ 2);
+     for (i in 1:n_meals){
+       shape[i] = response_magnitude[i] * shape[i];
+     }
+     return shape;
   }
 
-  vector response(int N, int n_meals, real[] time, vector meal_timing, real response_magnitude, real response_length, real base) {
+  vector response(int N, int n_meals, real[] time, vector meal_timing, matrix nutrients, vector a, real response_length, real base) {
     vector[N] mu = rep_vector(0, N) + base;
+    matrix[n_meals, N] delta_t;
+    matrix[n_meals, N] impulses;
     for (i in 1:n_meals) {
-        mu += impulse(response_magnitude, response_length, to_vector(time) - meal_timing[i]);
+        delta_t[i] = to_row_vector(time)- meal_timing[i] ;
+    }
+    impulses = impulse(a, response_length, delta_t, nutrients);
+    for (i in 1:n_meals) {
+        mu += impulses[i]';
     }
     return mu;
   }
+  
 
   vector draw_pred_rng(real[] test_x,
                        vector meal_timing,
+                       matrix nutrients,
                        vector glucose,
                        vector train_mu,
                        real[] train_x,
                        real marg_std,
                        real lengthscale,
                        real epsilon,
-                       real response_magnitude,
+                       vector a,
                        real response_length, 
                        real base) {
     int N1 = rows(glucose);
@@ -36,7 +50,7 @@ functions {
       matrix[N2, N2] diag_delta;
       matrix[N1, N1] K;
       vector[N2] mu2;
-      mu2 = response(N2, n_meals, test_x, meal_timing, response_magnitude, response_length, base);
+      mu2 = response(N2, n_meals, test_x, meal_timing, nutrients, a, response_length, base);
       K = cov_exp_quad(train_x, marg_std, lengthscale);
       for (n in 1:N1)
         K[n, n] = K[n,n] + epsilon;
@@ -53,6 +67,7 @@ functions {
     }
     return f2;
   } 
+
 }
 
 data {
@@ -65,6 +80,9 @@ data {
   real pred_times[n_pred];
   int n_meals_pred;
   vector[n_meals_pred] pred_meals;
+  int num_nutrients;
+  matrix[n_meals, num_nutrients] nutrients;
+  matrix[n_meals_pred, num_nutrients] pred_nutrients;
 }
 transformed data {
   real epsilon = 1e-3;
@@ -74,24 +92,26 @@ parameters {
   real<lower=epsilon> lengthscale;
   real<lower=0> marg_std;
   real<lower=0> base;
-  real<lower=0> response_magnitude;
+  vector<lower=0>[num_nutrients] a;
   real<lower=0> response_length;
 }
 
 transformed parameters {
-  vector[N] mu = response(N, n_meals, time, meal_timing, response_magnitude, response_length, base);
+  vector[N] mu = response(N, n_meals, time, meal_timing, nutrients, a, response_length, base);
 }
 
 model {
-  // gp computations
-
   vector[N] delta_t;
   matrix[N, N] L;
+
+  // gp computations
   matrix[N, N] K = cov_exp_quad(time, marg_std, lengthscale);
   for (n in 1:N)
     K[n, n] = K[n, n] + epsilon;
 
   L = cholesky_decompose(K);
+  
+  
 
   //priors
   lengthscale ~ normal(5, 1);
@@ -109,15 +129,16 @@ generated quantities {
   vector[0] empty;
   vector[n_pred] baseline = draw_pred_rng(pred_times,
                      empty,
+                     pred_nutrients,
                      glucose,
                      mu,
                      time,
                      marg_std,
                      lengthscale,
                      epsilon,
-                     response_magnitude,
+                     a,
                      response_length,
                      base);
-  vector[n_pred] resp = response(n_pred, n_meals_pred, pred_times, pred_meals, response_magnitude, response_length, base)-base;
+  vector[n_pred] resp = response(n_pred, n_meals_pred, pred_times, pred_meals, pred_nutrients, a, response_length, base)-base;
   pred_y = baseline + resp;
 }

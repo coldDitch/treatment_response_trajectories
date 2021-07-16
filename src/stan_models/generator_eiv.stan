@@ -1,6 +1,6 @@
 functions {
-   matrix impulse(real a, real response_length, matrix delta_t) {
-     return a * exp(-0.5 * (delta_t - 3*response_length).^2 / response_length ^ 2);
+   matrix impulse(real response_magnitude, real response_length, matrix delta_t) {
+     return response_magnitude * exp(-0.5 * (delta_t - 3*response_length).^2 / response_length ^ 2);
    }
 
    vector cumulative_response(matrix y, int N, int n_meals) {
@@ -21,6 +21,8 @@ data {
   real response_magnitude;
   real response_length;
   int n_meals;
+  real meal_reporting_noise;
+  real meal_reporting_bias;
 }
 transformed data {
   real interval = time[N] / n_meals;
@@ -44,6 +46,7 @@ model {
 
 generated quantities {
   vector[N] glucose;
+  vector[n_meals] true_timing;
   vector[n_meals] meal_timing;
   matrix[n_meals, N] time_delta;
   matrix[n_meals, N] impulses;
@@ -52,8 +55,9 @@ generated quantities {
   base_variation = L * eta;
   glucose = base_variation;
   for (i in 1:n_meals) {
-    meal_timing[i] = normal_rng(interval * i, 1);
-    time_delta[i] = to_row_vector(time) - meal_timing[i];
+    true_timing[i] = normal_rng(interval * i, 1);
+    time_delta[i] = to_row_vector(time) - true_timing[i];
+    meal_timing[i] = normal_rng(true_timing[i] + meal_reporting_bias, meal_reporting_noise);
   }
   impulses = impulse(response_magnitude, response_length, time_delta);
   resp = cumulative_response(impulses, N, n_meals);

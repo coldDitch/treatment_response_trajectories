@@ -76,15 +76,15 @@ parameters {
   real<lower=0> base;
   real<lower=0> response_magnitude;
   real<lower=0> response_length;
+  real<lower=0> meal_reporting_noise;
+  real meal_reporting_bias;
+  vector[n_meals] meal_timing_eiv;
 }
 
-transformed parameters {
-  vector[N] mu = response(N, n_meals, time, meal_timing, response_magnitude, response_length, base);
-}
 
 model {
   // gp computations
-
+  vector[N] mu;
   vector[N] delta_t;
   matrix[N, N] L;
   matrix[N, N] K = cov_exp_quad(time, marg_std, lengthscale);
@@ -94,17 +94,25 @@ model {
   L = cholesky_decompose(K);
 
   //priors
-  lengthscale ~ normal(5, 1);
-  marg_std ~ std_normal();
+  lengthscale ~ normal(5, 0.5);
+  marg_std ~ normal(0, 0.5);
   base ~ std_normal();
-  response_length ~ std_normal();
+  response_magnitude ~ uniform(1, 10);
+  response_length ~ uniform(0.1, 0.5);
+  meal_reporting_noise ~ normal(0, 0.1);
+  meal_reporting_bias ~ normal(0, 0.1);
 
   //likelihood
+  meal_timing ~ normal(meal_timing_eiv + meal_reporting_bias, meal_reporting_noise);
+  mu = response(N, n_meals, time, meal_timing_eiv, response_magnitude, response_length, base);
   glucose ~ multi_normal_cholesky(mu, L);
 }
 
 generated quantities {
+ // vector[n_meals] meal_timing_eiv_rng = to_vector(normal_rng(meal_timing - meal_reporting_bias, meal_reporting_noise));
+  vector[N] mu = response(N, n_meals, time, meal_timing_eiv, response_magnitude, response_length, base);
   real pred_x[n_pred] = pred_times;
+  vector[n_meals_pred] pred_meals_eiv = to_vector(normal_rng(pred_meals + meal_reporting_bias, meal_reporting_noise));
   vector[n_pred] pred_y;
   vector[0] empty;
   vector[n_pred] baseline = draw_pred_rng(pred_times,
@@ -118,6 +126,6 @@ generated quantities {
                      response_magnitude,
                      response_length,
                      base);
-  vector[n_pred] resp = response(n_pred, n_meals_pred, pred_times, pred_meals, response_magnitude, response_length, base)-base;
+  vector[n_pred] resp = response(n_pred, n_meals_pred, pred_times, to_vector(pred_meals_eiv), response_magnitude, response_length, base)-base;
   pred_y = baseline + resp;
 }
