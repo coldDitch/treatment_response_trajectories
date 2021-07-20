@@ -13,7 +13,7 @@ def fit_model(data, test_data=None):
     options = {"STAN_THREADS": True} if PARALELLIZE else None
     model = cmdstanpy.CmdStanModel(stan_file=bayespath, cpp_options=options)
     if ALGORITHM == 'mcmc':
-        fit = model.sample(data=dat, output_dir='logs', parallel_chains=4, show_progress=True, seed=SEED)
+        fit = model.sample(data=dat, output_dir='logs', parallel_chains=4, show_progress=True, seed=SEED, iter_warmup=2000)
     elif ALGORITHM == 'vi':
         fit = model.variational(data=dat, output_dir='logs')
     elif ALGORITHM == 'mle':

@@ -17,11 +17,11 @@ ALGORITHM = 'mcmc'
 GENERATORNAME = 'generator'
 
 # name of the model stanfile
-MODELNAME = 'TRmodel'
+MODELNAME = 'TRmodel_eiv_exposure'
 
 
 # generator parameters
-DAYS = 3
+DAYS = 2
 NOISESCALE = 1
 
 # nutrient parameters

@@ -2,13 +2,13 @@ import cmdstanpy
 import numpy as np
 from config import SEED, GENERATORNAME, NUM_NUTRIENTS, GENERATORNAME, MEAL_REPORTING_NOISE, MEAL_REPORTING_BIAS
 
-def generate_data(measurements_per_day=48,
+def generate_data(measurements_per_day=96,
         days=2,
-        lengthscale=1,
-        marg_std=1,
-        baseline=3,
-        response_magnitude=5,
-        response_length=0.25):
+        lengthscale=0.5,
+        marg_std=0.5,
+        baseline=4.5,
+        response_magnitude=4,
+        response_length=1):
     bayesname = GENERATORNAME
     bayespath = 'stan_models/' + bayesname + '.stan'
     num_data = int(measurements_per_day * days)

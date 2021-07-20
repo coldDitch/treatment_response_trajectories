@@ -5,16 +5,21 @@ import numpy as np
 
 ### high level plot functions
 
-def plot_datagen(train_data, test_data=None, gen_data=None, label='glucose'):
+def plot_meal_pred(train_data, fit):
+    plt.vlines(train_data['meal_timing'], 0, 1.1, label='training meals', color='r')
+    plt.vlines(np.mean(fit.stan_variable('meal_timing_eiv'), axis=0), 0, 1, label='estimated meals', color='b')
+    
+
+def plot_datagen(train_data, test_data=None, gen_data=None, label='glucose', marker='x'):
     plot_glucose(
         train_data['time'],
         train_data['glucose'],
-        label, labeladd='train', c='bx')
+        label, labeladd='train', c='b'+marker)
     if test_data:
         plot_glucose(
             test_data['time'],
             test_data['glucose'],
-            label, labeladd='test', c='rx')
+            label, labeladd='test', c='r'+marker)
     if gen_data:
         plot_meal_timing(gen_data)
 
