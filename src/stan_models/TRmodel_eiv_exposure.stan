@@ -78,8 +78,20 @@ parameters {
   real<lower=0> response_magnitude;
   real<lower=0> response_length;
   real<lower=0> meal_reporting_noise;
-  real meal_reporting_bias;
+  //real meal_reporting_bias;
   vector[n_meals] meal_timing_eiv;
+  vector[n_meals_pred-n_meals] fut_meal_timing;
+}
+
+transformed parameters {
+  // todo test if pred_meals works better in generated quantities with exact inference
+  vector[n_meals_pred] pred_meals_eiv;
+  for (i in 1:n_meals) {
+    pred_meals_eiv[i] = meal_timing_eiv[i];
+  }
+  for (i in n_meals+1:n_meals_pred){
+    pred_meals_eiv[i] = fut_meal_timing[i-n_meals];
+  }
 }
 
 
@@ -98,28 +110,33 @@ model {
   lengthscale ~ std_normal();
   marg_std ~ std_normal();
   base ~ std_normal();
-  response_magnitude ~ std_normal();
-  response_length ~ std_normal();
-  meal_reporting_noise ~ normal(0,0.1);
-  meal_reporting_bias ~ normal(0,0.1);
+  response_magnitude ~ normal(5, 1);
+  response_length ~ normal(1, 1);
+  meal_reporting_noise ~ normal(0, 0.1);
 
   //exposure prior
   for (i in 1:n_meals) {
-    meal_timing_eiv[i] ~ normal(interval * i, 1);
+    meal_timing_eiv[i] ~ normal(interval * i, 10);
   }
 
 
   //likelihood
-  meal_timing ~ normal(meal_timing_eiv + meal_reporting_bias, meal_reporting_noise);
+  meal_timing ~ normal(meal_timing_eiv, meal_reporting_noise);
   mu = response(N, n_meals, time, meal_timing_eiv, response_magnitude, response_length, base);
   glucose ~ multi_normal_cholesky(mu, L);
+
+  //impute latent timings for predicted values
+
+  for (i in n_meals+1:n_meals_pred) {
+    pred_meals_eiv[i] ~ normal(interval * i, 10);
+    pred_meals[i] ~ normal(pred_meals_eiv[i], meal_reporting_noise);
+  }
 }
 
 generated quantities {
- // vector[n_meals] meal_timing_eiv_rng = to_vector(normal_rng(meal_timing - meal_reporting_bias, meal_reporting_noise));
+ // vector[n_meals] meal_timing_eiv_rng = to_vector(normal_rng(meal_timing, meal_reporting_noise));
   vector[N] mu = response(N, n_meals, time, meal_timing_eiv, response_magnitude, response_length, base);
   real pred_x[n_pred] = pred_times;
-  vector[n_meals_pred] pred_meals_eiv = to_vector(normal_rng(pred_meals + meal_reporting_bias, meal_reporting_noise));
   vector[n_pred] pred_y;
   vector[0] empty;
   vector[n_pred] baseline = draw_pred_rng(pred_times,
@@ -133,6 +150,7 @@ generated quantities {
                      response_magnitude,
                      response_length,
                      base);
-  vector[n_pred] resp = response(n_pred, n_meals_pred, pred_times, to_vector(pred_meals_eiv), response_magnitude, response_length, base)-base;
+  vector[n_pred] resp;
+  resp  = response(n_pred, n_meals_pred, pred_times, to_vector(pred_meals_eiv), response_magnitude, response_length, base)-base;
   pred_y = baseline + resp;
 }

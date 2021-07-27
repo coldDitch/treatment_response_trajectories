@@ -1,21 +1,21 @@
+"""
+    File for running the main experiment
+"""
+
 import matplotlib.pyplot as plt
 
-from plot_utils import plot_baseline, plot_datagen, plot_fit, plot_response, plot_meal_pred
+from plot_utils import plot_baseline, plot_datagen, plot_fit, plot_response, plot_meal_pred, plot_samples_grid, plot_samples
 from data_generators import generate_data, test_train_split
 from model_utils import fit_model
 from utils import summary
 
-from config import DIAGNOSE, PLOTFIT, PLOTBASE, PLOTRESP, FIGSIZE, DAYS, NOISESCALE, SUMMARY
+from config import DIAGNOSE, PLOTFIT, PLOTBASE, PLOTRESP, FIGSIZE, DAYS, NOISESCALE, SUMMARY, PLOTSAMPLES
+
 
 gen_data = generate_data(days=DAYS, lengthscale=NOISESCALE)
 train_data, test_data = test_train_split(gen_data)
 
-
 fit = fit_model(train_data, test_data)
-
-
-plot_meal_pred(train_data, fit)
-plt.legend()
 
 if DIAGNOSE:
     fit.diagnose()
@@ -25,7 +25,8 @@ if SUMMARY:
 
 if PLOTFIT:
     plt.figure(figsize=FIGSIZE)
-    plot_datagen(train_data, test_data=test_data, gen_data=gen_data)
+    plot_meal_pred(fit, gen_data)
+    plot_datagen(train_data, test_data=test_data)
     plot_fit(fit)
     plt.legend()
 
@@ -39,5 +40,8 @@ if PLOTRESP:
     plot_response(fit, gen_data)
     plt.legend()
 
+if PLOTSAMPLES:
+    plot_samples(fit)
+    plot_samples_grid(fit)
 
 plt.show()

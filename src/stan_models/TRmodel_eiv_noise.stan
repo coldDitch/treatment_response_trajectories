@@ -74,10 +74,9 @@ parameters {
   real<lower=epsilon> lengthscale;
   real<lower=0> marg_std;
   real<lower=0> base;
-  real<lower=0> response_magnitude;
-  real<lower=0> response_length;
-  real<lower=0> meal_reporting_noise;
-  real meal_reporting_bias;
+  real<lower=1> response_magnitude;
+  real<lower=0.25> response_length;
+  real<lower=0, upper=0.75> meal_reporting_noise;
   vector[n_meals] meal_timing_eiv;
   vector[n_meals_pred-n_meals] fut_meal_timing;
 }
@@ -109,19 +108,18 @@ model {
   lengthscale ~ std_normal();
   marg_std ~ std_normal();
   base ~ std_normal();
-  response_magnitude ~ std_normal();
+  response_magnitude ~ normal(5, 1);
   response_length ~ std_normal();
   meal_reporting_noise ~ std_normal();
-  meal_reporting_bias ~ std_normal();
 
   //likelihood
-  meal_timing ~ normal(meal_timing_eiv + meal_reporting_bias, meal_reporting_noise);
+  meal_timing ~ normal(meal_timing_eiv, meal_reporting_noise);
   glucose ~ multi_normal_cholesky(mu, L);
 
 
   //pred likelihood
   for (i in n_meals+1:n_meals_pred) {
-    pred_meals[i] ~ normal(pred_meals_eiv[i] + meal_reporting_bias, meal_reporting_noise);
+    pred_meals[i] ~ normal(pred_meals_eiv[i], meal_reporting_noise);
   }
 }
 

@@ -25,7 +25,7 @@ data {
   real meal_reporting_bias;
 }
 transformed data {
-  real interval = time[N] / n_meals;
+  real interval = time[N] / (n_meals+1);
   real epsilon = 1e-3;
   matrix[N, N] L;
   matrix[N, N] K = cov_exp_quad(time, marg_std, lengthscale);

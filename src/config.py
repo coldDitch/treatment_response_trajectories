@@ -1,3 +1,8 @@
+"""
+Config file for all the constants needed to run different experiments
+#TODO move rest of the parameters here
+"""
+
 # Faster inference but slower compilation time
 # should be false when developing stan models.
 # note: PARALELLIZE affect the compilation.
@@ -10,32 +15,35 @@ DIAGNOSE = True
 # print summary of posterior
 SUMMARY = True
 
-# algorithm, mcmc #TODO other inference methods if needed (vi, mle)
+# algorithm, mcmc
+#TODO other inference methods if needed (vi, mle)
 ALGORITHM = 'mcmc'
 
 # name of the generator stanfile
 GENERATORNAME = 'generator'
 
-# name of the model stanfile
-MODELNAME = 'TRmodel_eiv_exposure'
+# name of the model stanfile, "nutrient" has to be included in the name for utils to handle it
+MODELNAME = 'TRmodel'
 
 
 # generator parameters
 DAYS = 2
-NOISESCALE = 1
+NOISESCALE = 0.5
 
 # nutrient parameters
 NUM_NUTRIENTS = 5
 
-# eiv parameters
-MEAL_REPORTING_NOISE = 1
-MEAL_REPORTING_BIAS = 0
+# eiv generator parameters
+MEAL_REPORTING_NOISE = 0.25
+MEAL_REPORTING_BIAS = 0.4
 
 # seed for random generators
-SEED = 1234
+SEED = 123
 
 # plotting options
-FIGSIZE = (5,5)
-PLOTFIT = True 
+FIGSIZE = (8,4.5)
+PLOTFIT = True
 PLOTBASE = True
 PLOTRESP = True
+PLOTMEALS = True
+PLOTSAMPLES = True

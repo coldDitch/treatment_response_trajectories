@@ -74,10 +74,10 @@ parameters {
   real<lower=epsilon> lengthscale;
   real<lower=0> marg_std;
   real<lower=0> base;
-  real<lower=0> response_magnitude;
-  real<lower=0> response_length;
-  real<lower=0> meal_reporting_noise;
-  real meal_reporting_bias;
+  real<lower=1> response_magnitude;
+  real<lower=0.25> response_length;
+  real<lower=0, upper=0.5> meal_reporting_noise;
+  real<lower=-1, upper=1> meal_reporting_bias;
   vector[n_meals] meal_timing_eiv;
   vector[n_meals_pred-n_meals] fut_meal_timing;
 }
