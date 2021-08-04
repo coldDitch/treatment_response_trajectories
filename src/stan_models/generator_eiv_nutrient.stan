@@ -22,6 +22,8 @@ data {
   int num_nutrients;
   vector[num_nutrients] response_magnitude_params;
   vector[num_nutrients] response_length_params;
+  real meal_reporting_bias;
+  real meal_reporting_noise;
 }
 transformed data {
   real interval = time[N] / n_meals;
@@ -56,15 +58,15 @@ generated quantities {
   base_variation = L * eta;
   glucose = base_variation;
   for (i in 1:n_meals) {
-    meal_timing[i] = normal_rng(interval * i, 1);
-    time_delta[i] = to_row_vector(time) - meal_timing[i];
+    true_timing[i] = normal_rng(interval * i, 1);
+    time_delta[i] = to_row_vector(time) - true_timing[i];
+    meal_timing[i] = normal_rng(true_timing[i] + meal_reporting_bias, meal_reporting_noise);
     for (j in 1:num_nutrients) {
-        nutrients[i, j] = gamma_rng(1, 1);
+        nutrients[i, j] = gamma_rng(2, 2);
     }
   }
   meal_response_magnitudes = nutrients * response_magnitude_params;
   meal_response_lengths = nutrients * response_length_params;
-  true_timing = meal_timing;
   resp = response(N, n_meals, time, true_timing, meal_response_magnitudes, meal_response_lengths, baseline)-baseline;
   glucose += resp;
   glucose += baseline;

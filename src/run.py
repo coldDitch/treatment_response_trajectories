@@ -13,7 +13,7 @@ from config import DIAGNOSE, PLOTFIT, PLOTBASE, PLOTRESP, FIGSIZE, DAYS, NOISESC
 
 
 gen_data = generate_data(days=DAYS, lengthscale=NOISESCALE)
-train_data, test_data = test_train_split(gen_data)
+train_data, test_data = test_train_split(gen_data, train_percentage=0.5)
 
 fit = fit_model(train_data, test_data)
 

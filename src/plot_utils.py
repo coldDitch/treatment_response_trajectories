@@ -47,18 +47,19 @@ def plot_meal_pred(fit, gen_data):
         fit CmdStanMCMC: the model object fit
         gen_data (dict): dictionary of generated dataset
     """
-    if 'pred_meal_eiv' in fit.draws_pd():
+
+    if 'meal_reporting_noise' in fit_varnames(fit):
         meal_m = np.median(fit.stan_variable('pred_meals_eiv'), axis=0)
-        plt.vlines(gen_data['meal_timing'], 0, 1.1, label='observed meals', color='r')
+        plt.vlines(gen_data['meal_timing'], 0, 1.2, label='observed meals', color='r')
+        plt.vlines(gen_data['true_timing'], 0, 1.1, label='true timing', color='y')
         plt.vlines(meal_m, 0, 1, label='estimated meals', color='b')
         dy = 0
         dx = meal_m - gen_data['meal_timing']
         for i in range(dx.shape[0]):
             plt.arrow(gen_data['meal_timing'][i], 1, dx[i], dy, head_width=0.05, head_length=0.1, length_includes_head=True)
-        plt.vlines(gen_data['true_timing'], 0, 1.1, label='true timing', color='y')
     else:
         plt.vlines(gen_data['true_timing'], 0, 1.1, label='true timing', color='y')
-    
+   
 
 def plot_datagen(train_data, test_data=None, label='glucose', marker='x'):
     """[summary]

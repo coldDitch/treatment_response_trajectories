@@ -7,7 +7,7 @@ def generate_data(measurements_per_day=96,
         lengthscale=0.5,
         marg_std=0.5,
         baseline=4.5,
-        response_magnitude=4,
+        response_magnitude=6,
         response_length=0.5):
     """Uses stan model to draw samples from data generating distribution.
     One samples is drawn from the distribution to form a dataset.
@@ -40,7 +40,8 @@ def generate_data(measurements_per_day=96,
     }
     if 'nutrient' in bayesname:
         dat['num_nutrients'] = NUM_NUTRIENTS
-        dat['response_magnitude'] = np.full(NUM_NUTRIENTS, response_length)
+        dat['response_magnitude_params'] = np.full(NUM_NUTRIENTS, response_magnitude/NUM_NUTRIENTS)
+        dat['response_length_params'] = np.full(NUM_NUTRIENTS, response_length/NUM_NUTRIENTS)
     if 'eiv' in bayesname:
         dat['meal_reporting_noise'] = MEAL_REPORTING_NOISE
         dat['meal_reporting_bias'] = MEAL_REPORTING_BIAS

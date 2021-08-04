@@ -76,7 +76,7 @@ parameters {
   real<lower=0> base;
   real<lower=1> response_magnitude;
   real<lower=0.25> response_length;
-  real<lower=0, upper=0.75> meal_reporting_noise;
+  real<lower=0, upper=2> meal_reporting_noise;
   vector[n_meals] meal_timing_eiv;
   vector[n_meals_pred-n_meals] fut_meal_timing;
 }

@@ -25,8 +25,11 @@ def fit_model(data, test_data=None):
     pred_data = combine_to_prediction_data(data, test_data)
     dat = data.copy()
     dat.update(pred_data)
+    inits = {}
     if 'nutrient' in bayesname:
         handle_nutrients(dat, test_data)
+    if 'eiv' in bayesname:
+        handle_eiv(data, test_data, inits)
     options = {"STAN_THREADS": True} if PARALELLIZE else None
     model = cmdstanpy.CmdStanModel(stan_file=bayespath, cpp_options=options)
     if ALGORITHM == 'mcmc':
@@ -36,7 +39,8 @@ def fit_model(data, test_data=None):
             threads_per_chain=2,
             show_progress=True,
             seed=SEED,
-            iter_warmup=1000)
+            inits=inits,
+            iter_warmup=2000)
     else:
         raise Exception('not valid inference method')
     return fit
@@ -72,3 +76,7 @@ def handle_nutrients(data, test_data):
     """
     data['num_nutrients'] = data['nutrients'].shape[1]
     data['pred_nutrients'] = np.concatenate((data['nutrients'], test_data['nutrients']),axis=0)
+
+def handle_eiv(data, test_data, inits):
+    inits['meal_timing_eiv'] = data['meal_timing']
+    inits['fut_meal_timing'] = test_data['meal_timing']

@@ -68,6 +68,7 @@ data {
 }
 transformed data {
   real epsilon = 1e-3;
+  real glucose_var = variance(glucose);
 }
 
 parameters {
@@ -76,8 +77,7 @@ parameters {
   real<lower=0> base;
   real<lower=1> response_magnitude;
   real<lower=0.25> response_length;
-  real<lower=0, upper=1> meal_reporting_noise;
-  real<lower=-1, upper=1> meal_reporting_bias;
+  real<lower=0, upper=2> meal_reporting_noise;
   vector[n_meals] meal_timing_eiv;
   vector[n_meals_pred-n_meals] fut_meal_timing;
 }
@@ -96,6 +96,10 @@ transformed parameters {
 
 
 model {
+  // model guidance
+  
+  abs(variance(mu) - glucose_var) ~ gamma(1, 1);
+
   // gp computations
   vector[N] delta_t;
   matrix[N, N] L;
@@ -112,16 +116,15 @@ model {
   response_magnitude ~ std_normal();
   response_length ~ std_normal();
   meal_reporting_noise ~ std_normal();
-  meal_reporting_bias ~ std_normal();
 
   //likelihood
-  meal_timing ~ normal(meal_timing_eiv + meal_reporting_bias, meal_reporting_noise);
+  meal_timing ~ normal(meal_timing_eiv, meal_reporting_noise);
   glucose ~ multi_normal_cholesky(mu, L);
 
 
   //pred likelihood
   for (i in n_meals+1:n_meals_pred) {
-    pred_meals[i] ~ normal(pred_meals_eiv[i] + meal_reporting_bias, meal_reporting_noise);
+    pred_meals[i] ~ normal(pred_meals_eiv[i], meal_reporting_noise);
   }
 }
 
