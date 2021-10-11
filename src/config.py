@@ -12,6 +12,8 @@ PARALELLIZE = True
 # diagnose MCMC stats, takes a bit of time but nessessary for checking for successful fit
 DIAGNOSE = True
 
+LOGS = 'logs'
+
 # print summary of posterior
 SUMMARY = True
 
@@ -20,22 +22,12 @@ SUMMARY = True
 ALGORITHM = 'mcmc'
 
 # name of the generator stanfile
-GENERATORNAME = 'generator_eiv_nutrient'
+GENERATORNAME = 'generator_generalized'
+
+DAYS = 1
 
 # name of the model stanfile, "nutrient" has to be included in the name for utils to handle it
 MODELNAME = 'TRmodel_eiv_nutrient_explaining'
-
-
-# generator parameters
-DAYS = 2
-NOISESCALE = 0.25
-
-# nutrient parameters
-NUM_NUTRIENTS = 1
-
-# eiv generator parameters
-MEAL_REPORTING_NOISE = 0.25
-MEAL_REPORTING_BIAS = 0.4
 
 # seed for random generators
 SEED = 1234

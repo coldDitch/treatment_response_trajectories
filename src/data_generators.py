@@ -1,14 +1,9 @@
 import cmdstanpy
+import json
 import numpy as np
-from config import SEED, GENERATORNAME, NUM_NUTRIENTS, GENERATORNAME, MEAL_REPORTING_NOISE, MEAL_REPORTING_BIAS
+from config import SEED, GENERATORNAME, GENERATORNAME, LOGS
 
-def generate_data(measurements_per_day=96,
-        days=2,
-        lengthscale=0.5,
-        marg_std=0.5,
-        baseline=4.5,
-        response_magnitude=6,
-        response_length=0.5):
+def generate_data(measurements_per_day=96, days=2):
     """Uses stan model to draw samples from data generating distribution.
     One samples is drawn from the distribution to form a dataset.
 
@@ -28,25 +23,12 @@ def generate_data(measurements_per_day=96,
     bayespath = 'stan_models/' + bayesname + '.stan'
     num_data = int(measurements_per_day * days)
     measurement_times = np.linspace(0, 24 * days, num_data)
-    dat = {
-        'N': num_data,
-        'time': measurement_times,
-        'marg_std': marg_std,
-        'lengthscale': lengthscale,
-        'baseline': baseline,
-        'response_magnitude': response_magnitude,
-        'response_length': response_length,
-        'n_meals': 4 * days
-    }
-    if 'nutrient' in bayesname:
-        dat['num_nutrients'] = NUM_NUTRIENTS
-        dat['response_magnitude_params'] = np.full(NUM_NUTRIENTS, response_magnitude/NUM_NUTRIENTS)
-        dat['response_length_params'] = np.full(NUM_NUTRIENTS, response_length/NUM_NUTRIENTS)
-    if 'eiv' in bayesname:
-        dat['meal_reporting_noise'] = MEAL_REPORTING_NOISE
-        dat['meal_reporting_bias'] = MEAL_REPORTING_BIAS
+    with open('generator.json') as json_file:
+        dat = json.loads(json_file.read())
+    dat['time'] = measurement_times
+    update_n(dat)
     model = cmdstanpy.CmdStanModel(stan_file=bayespath)
-    fit = model.sample(data=dat, output_dir='logs', fixed_param=True, chains=1, seed=SEED)
+    fit = model.sample(data=dat, output_dir=LOGS, fixed_param=True, chains=1, seed=SEED)
     gen_data = {key: dat[0] for key, dat in fit.stan_variables().items()}
     gen_data.update(dat)
     return gen_data
@@ -72,9 +54,8 @@ def test_train_split(data, train_percentage=0.8):
     mask = data['meal_timing'] < split_time
     train_data['meal_timing'] = data['meal_timing'][mask]
     test_data['meal_timing'] = data['meal_timing'][np.logical_not(mask)]
-    if 'nutrient' in GENERATORNAME:
-        train_data['nutrients'] = data['nutrients'][mask]
-        test_data['nutrients'] = data['nutrients'][np.logical_not(mask)]
+    train_data['nutrients'] = data['nutrients'][mask]
+    test_data['nutrients'] = data['nutrients'][np.logical_not(mask)]
     update_n(train_data)
     return train_data, test_data
 
@@ -85,8 +66,10 @@ def update_n(data):
     Args:
         samples (dict): 
     """
-    data['N'] = data['time'].shape[0]
-    data['n_meals'] = data['meal_timing'].shape[0]
+    data['N'] = len(data['time'])
+    data['num_nutrients'] = len(data['response_magnitude_params'])
+    if 'meal_timing' in data.keys():
+        data['n_meals'] = len(data['meal_timing'])
 
 def not_intfloat(test_el):
     """tests if data x is int or float

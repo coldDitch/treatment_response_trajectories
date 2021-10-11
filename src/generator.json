@@ -1,0 +1,12 @@
+{
+  "lengthscale": 1,
+  "marg_std": 1,
+  "baseline": 5,
+  "n_meals": 4,
+  "response_magnitude_params": [1],
+  "response_length_params": [1],
+  "nutrient_mean": [1],
+  "nutrient_std": [1],
+  "meal_reporting_bias": 0,
+  "meal_reporting_noise": 0
+}
