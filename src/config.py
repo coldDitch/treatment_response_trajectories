@@ -7,7 +7,7 @@ Config file for all the constants needed to run different experiments
 # should be false when developing stan models.
 # note: PARALELLIZE affect the compilation.
 # If paralellized model has been compiled it will be used by default
-PARALELLIZE = True
+PARALELLIZE = False
 
 # diagnose MCMC stats, takes a bit of time but nessessary for checking for successful fit
 DIAGNOSE = True
@@ -24,13 +24,16 @@ ALGORITHM = 'mcmc'
 # name of the generator stanfile
 GENERATORNAME = 'generator_generalized'
 
-DAYS = 1
+DAYS = 3
 
 # name of the model stanfile, "nutrient" has to be included in the name for utils to handle it
-MODELNAME = 'TRmodel_eiv_nutrient_explaining'
+MODELNAME = 'TRmodel_generalized'
 
 # seed for random generators
 SEED = 1234
+
+#
+SYNTHETIC = False
 
 # plotting options
 FIGSIZE = (8,4.5)

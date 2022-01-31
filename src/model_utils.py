@@ -26,10 +26,8 @@ def fit_model(data, test_data=None):
     dat = data.copy()
     dat.update(pred_data)
     inits = {}
-    if 'nutrient' in bayesname:
-        handle_nutrients(dat, test_data)
-    if 'eiv' in bayesname:
-        handle_eiv(data, test_data, inits)
+    handle_nutrients(dat, test_data)
+    handle_eiv(data, test_data, inits)
     options = {"STAN_THREADS": True} if PARALELLIZE else None
     model = cmdstanpy.CmdStanModel(stan_file=bayespath, cpp_options=options)
     if ALGORITHM == 'mcmc':
@@ -40,10 +38,12 @@ def fit_model(data, test_data=None):
             show_progress=True,
             seed=SEED,
             inits=inits,
-            iter_warmup=2000)
+            iter_warmup=1000)
     else:
         raise Exception('not valid inference method')
+    fit.save_csvfiles('posterior_data')
     return fit
+
 
 def combine_to_prediction_data(data, test_data):
     """Combine training and test data to prediction data. A dataset for which we predict the glucose values.

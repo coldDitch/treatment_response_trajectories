@@ -79,7 +79,7 @@ generated quantities {
     }
     else {
       for (j in 1:num_nutrients) {
-        nutrients[i, j] = gamma_rng(nutrient_alpha[i], nutrient_beta[j]);
+        nutrients[i, j] = gamma_rng(nutrient_alpha[j], nutrient_beta[j]);
       }
     }
   }

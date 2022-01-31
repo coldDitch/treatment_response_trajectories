@@ -1,9 +1,9 @@
 {
   "lengthscale": 1,
-  "marg_std": 1,
+  "marg_std": 0.25,
   "baseline": 5,
-  "n_meals": 4,
-  "response_magnitude_params": [1],
+  "n_meals": 8,
+  "response_magnitude_params": [2],
   "response_length_params": [1],
   "nutrient_mean": [1],
   "nutrient_std": [1],

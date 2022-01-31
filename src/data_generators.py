@@ -67,7 +67,7 @@ def update_n(data):
         samples (dict): 
     """
     data['N'] = len(data['time'])
-    data['num_nutrients'] = len(data['response_magnitude_params'])
+    data['num_nutrients'] = data['nutrients'].shape[1]
     if 'meal_timing' in data.keys():
         data['n_meals'] = len(data['meal_timing'])
 
