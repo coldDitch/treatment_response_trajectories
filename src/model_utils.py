@@ -2,9 +2,44 @@
     Functions for preparing and fitting the model
 """
 
+import os
 import cmdstanpy
 import numpy as np
-from config import PARALELLIZE, ALGORITHM, MODELNAME, SEED
+from config import PARALELLIZE, ALGORITHM, MODELNAME, SEED, TRAIN_PERCENTAGE, PATIENT_ID
+from preprocess import data_to_stan
+
+def name_run():
+    list_of_params = [MODELNAME, PATIENT_ID, TRAIN_PERCENTAGE, SEED]
+    list_of_params = [str(el) for el in list_of_params]
+    name = '_'.join(list_of_params)
+    return name
+
+def find_fit(data, test_data=None):
+    run_path = 'posterior_data/'+name_run()
+    if not os.path.isdir(run_path):
+        print('new run')
+        fit_model(data, test_data)
+    else:
+        print('previous fit found')
+    return generated_quantities(data, test_data)
+
+def model_files():
+    posterior_path = "posterior_data/"+name_run()+'/'
+    dirs = os.listdir(posterior_path)
+    last_fit = sorted(dirs)[-4:]
+    last_fit = [posterior_path + l for l in last_fit]
+    return last_fit
+
+def generated_quantities(data, test_data=None):
+    bayesname = MODELNAME
+    bayespath = 'stan_models/' + bayesname + '_gq.stan'
+    model = cmdstanpy.CmdStanModel(stan_file=bayespath)
+    train_data, pred_data = data_to_stan(data, test_data)
+    last_fit = model_files()
+    fit = model.generate_quantities(data=pred_data,
+            mcmc_sample=last_fit,
+            gq_output_dir='logs')
+    return fit
 
 def fit_model(data, test_data=None):
     """Fits the model to the data and predicts glucose values to test_data
@@ -22,16 +57,13 @@ def fit_model(data, test_data=None):
     """
     bayesname = MODELNAME
     bayespath = 'stan_models/' + bayesname + '.stan'
-    pred_data = combine_to_prediction_data(data, test_data)
-    dat = data.copy()
-    dat.update(pred_data)
+    train_data, pred_data = data_to_stan(data, test_data)
     inits = {}
-    handle_nutrients(dat, test_data)
-    handle_eiv(data, test_data, inits)
+    handle_eiv(train_data, pred_data, inits)
     options = {"STAN_THREADS": True} if PARALELLIZE else None
     model = cmdstanpy.CmdStanModel(stan_file=bayespath, cpp_options=options)
     if ALGORITHM == 'mcmc':
-        fit = model.sample(data=dat,
+        fit = model.sample(data=train_data,
             output_dir='logs',
             parallel_chains=4,
             threads_per_chain=2,
@@ -41,42 +73,18 @@ def fit_model(data, test_data=None):
             iter_warmup=1000)
     else:
         raise Exception('not valid inference method')
-    fit.save_csvfiles('posterior_data')
+    fit.save_csvfiles('posterior_data/' + name_run())
     return fit
 
 
-def combine_to_prediction_data(data, test_data):
-    """Combine training and test data to prediction data. A dataset for which we predict the glucose values.
 
-    Args:
-        data (dict): dictionary of training data
-        test_data (dict): dictionary of test data
-
-    Returns:
-        dict: dictionary with times and meals for which we want to predict the glucose
-    """
-    pred_data = {}
-    if test_data:
-        pred_data['pred_times'] = np.concatenate((data['time'], test_data['time']))
-        pred_data['pred_meals'] = np.concatenate((data['meal_timing'], test_data['meal_timing']))
-    else:
-        time_horizon = 12
-        pred_data['pred_times']=np.linspace(np.min(data['time']), np.max(data['time']) + time_horizon, data['time'].shape[0]*2)
-        pred_data['pred_meals']=data['meal_timing']
-    pred_data['n_pred'] = pred_data['pred_times'].shape[0]
-    pred_data['n_meals_pred'] = pred_data['pred_meals'].shape[0]
-    return pred_data
-
-def handle_nutrients(data, test_data):
-    """Adds nutrient releated data to the training and prediction set
-
-    Args:
-        data (dict): dictionary of training data
-        test_data (): dictionary of test data
-    """
-    data['num_nutrients'] = data['nutrients'].shape[1]
-    data['pred_nutrients'] = np.concatenate((data['nutrients'], test_data['nutrients']),axis=0)
 
 def handle_eiv(data, test_data, inits):
+    inits['lengthscale'] = np.full(data['num_ind'], 3)
+    inits['marg_std'] = np.full(data['num_ind'], 1)
+    inits['sigma'] = np.full(data['num_ind'], 0.5)
+    inits['base'] = np.full(data['num_ind'], 5)
+    inits['response_magnitude_params'] = np.full((data['num_ind'], data['num_nutrients']), 1)
+    inits['response_length_params'] = np.full((data['num_ind'], data['num_nutrients']), 0.5)
+    inits['meal_reporting_noise'] = np.full(data['num_ind'], 0.3)
     inits['meal_timing_eiv'] = data['meal_timing']
-    inits['fut_meal_timing'] = test_data['meal_timing']

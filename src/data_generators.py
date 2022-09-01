@@ -2,6 +2,7 @@ import cmdstanpy
 import json
 import numpy as np
 from config import SEED, GENERATORNAME, GENERATORNAME, LOGS
+from preprocess import data_to_stan
 
 def generate_data(measurements_per_day=96, days=2):
     """Uses stan model to draw samples from data generating distribution.
@@ -43,33 +44,34 @@ def test_train_split(data, train_percentage=0.8):
     Returns:
         dict, dict : data split in two
     """
-    dat_len = data['time'].shape[0]
-    split_len = int(dat_len * train_percentage)
-    split_time = data['time'][split_len]
-    # TODO this splits all data at split_len and then other data is handled seperately
-    # for this to work consistently stan model should be reformated such that dimension of all matrices / vectors
-    # in generated quatities block are [N, other dims] where N is number of glucose measurements
-    train_data = {key: dat[:split_len] for key, dat in data.items() if not_intfloat(dat)}
-    test_data = {key: dat[split_len:] for key, dat in data.items() if not_intfloat(dat)}
-    mask = data['meal_timing'] < split_time
-    train_data['meal_timing'] = data['meal_timing'][mask]
-    test_data['meal_timing'] = data['meal_timing'][np.logical_not(mask)]
-    train_data['nutrients'] = data['nutrients'][mask]
-    test_data['nutrients'] = data['nutrients'][np.logical_not(mask)]
-    update_n(train_data)
+
+    print(data)
+    train_data = {}
+    test_data = {}
+    number_of_individuals = data['num_ind']
+    for ind in range(number_of_individuals):
+        idx_gluc = data['ind_idx_gluc'][ind]
+        dat_len = data['time'][idx_gluc].shape[0]
+        print(data['time'][idx_gluc])
+        split_len = int(dat_len * train_percentage)
+        split_time = data['time'][idx_gluc][split_len]
+        # TODO this splits all data at split_len and then other data is handled seperately
+        # for this to work consistently stan model should be reformated such that dimension of all matrices / vectors
+        # in generated quatities block are [N, other dims] where N is number of glucose measurements
+        # train_data = {key: dat[:split_len] for key, dat in data.items() if not_intfloat(dat)}
+        # test_data = {key: dat[split_len:] for key, dat in data.items() if not_intfloat(dat)}
+        meal_mask = data['meal_timing'] < split_time
+        print('idxshape', data['ind_idx_gluc'].shape)
+        train_data['meal_timing'] = data['meal_timing'][mask]
+        test_data['meal_timing'] = data['meal_timing'][np.logical_not(mask)]
+        train_data['nutrients'] = data['nutrients'][mask]
+        test_data['nutrients'] = data['nutrients'][np.logical_not(mask)]
+        test_data['ind_idx_gluc'] = data['ind_idx_gluc'][:,~mask]
+        train_data['num_ind'] = data['num_ind']
+        update_n(train_data)
     return train_data, test_data
 
 
-def update_n(data):
-    """Updates the variables describing array lengths to correspond with the actual lengths
-
-    Args:
-        samples (dict): 
-    """
-    data['N'] = len(data['time'])
-    data['num_nutrients'] = data['nutrients'].shape[1]
-    if 'meal_timing' in data.keys():
-        data['n_meals'] = len(data['meal_timing'])
 
 def not_intfloat(test_el):
     """tests if data x is int or float

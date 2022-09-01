@@ -7,9 +7,55 @@ import numpy as np
 import arviz as az
 from sklearn.neighbors import KernelDensity
 from utils import fit_varnames
+from config import PATIENT_ID
 
 az.style.use("arviz-darkgrid")
 
+
+def plot_individuals(result_data, train_data, test_data):
+    for id in PATIENT_ID:
+        plt.figure()
+        plt.title('Patient number '+str(id))
+        mask = result_data['df_gluc']['id'] == id
+        plt.plot(result_data['df_gluc']['time'][mask], result_data['df_gluc']['trend'][mask], color='y')
+        plot_id(result_data, id, label='model fit', color='b')
+        plot_quantiles(result_data, id, color='b')
+        plot_id(train_data, id, label='train data',color='r')
+        plot_id(test_data, id, label='test_data', color='m')
+        plot_meal_timing(train_data['df_meal'], id)
+        plot_meal_timing(test_data['df_meal'], id, have_label=False)
+        plt.legend()
+
+def plot_quantiles(result_data, id, color):
+    df = result_data['df_gluc']
+    mask = result_data['df_gluc']['id']==id
+    df = df[mask]
+    plt.fill_between(df['time'], df['q25'], df['q75'], alpha=0.2, color=color)
+
+def plot_id(data, id, label, color='b'):
+    mask = data['df_gluc']['id']==id
+    plt.plot(data['df_gluc']['time'][mask], data['df_gluc']['glucose'][mask], label=label, color=color)
+
+def plot_meal_timing(data, id, c='r', have_label=True):
+    """[summary]
+
+    Args:
+        gen_data (dict): dictionary of generated dataset
+        c (str, optional): color. Defaults to 'r'.
+    """
+    mask = data['id']==id
+    time = data['time'][mask]
+    nutrients = ['STARCH', 'SUGAR', 'FIBC', 'FAT', 'PROT']
+
+    nutr = data[nutrients][mask].values
+    #height = min(gen_data['glucose']) - 0.5
+    y_bottom = np.zeros(nutr.shape[0])
+    for i in range(nutr.shape[1]):
+        label = nutrients[i]
+        if (not have_label):
+            label = None
+        plt.bar(time, height=nutr[:,i], bottom=y_bottom, label=label)
+        y_bottom = y_bottom + nutr[:,i]
 
 def plot_samples_grid(fit):
     """Creates a pairplot of posterior samples for one dimensional posterior parameters
@@ -18,8 +64,10 @@ def plot_samples_grid(fit):
         fit CmdStanMCMC: the fitted model object
     """
     var_names = fit_varnames(fit)
+    print(var_names)
+    print(fit.draws_pd())
     az.plot_pair(
-        fit, var_names=var_names, divergences=True
+        fit.draws_pd(), divergences=True
     )
 
 def plot_samples(fit):
@@ -29,9 +77,9 @@ def plot_samples(fit):
         fit CmdStanMCMC: the model object fit
     """
     var_names = fit_varnames(fit)
+    print(fit.draws_pd()[var_names].to_dict())
     az.plot_density(
-        fit,
-        var_names=var_names,
+        fit.draws_pd()[var_names].to_dict(),
         shade=0.1,
         hdi_prob=1
         ) 
@@ -48,8 +96,10 @@ def plot_meal_pred(fit, gen_data):
         gen_data (dict): dictionary of generated dataset
     """
 
-    meal_m = np.median(fit.stan_variable('pred_meals_eiv'), axis=0)
-    plt.vlines(gen_data['meal_timing'], 0, 1.2, label='observed meals', color='r')
+    meal_m = np.mean(fit.stan_variable('pred_meals_eiv'), axis=0)
+    print(meal_m)
+    #plt.vlines(gen_data['meal_timing'], 0, 1.2, label='observed meals', color='r')
+    plot_meal_timing(gen_data)
     if 'true_timing' in gen_data:
         plt.vlines(gen_data['true_timing'], 0, 1.1, label='true timing', color='y')
     plt.vlines(meal_m, 0, 1, label='estimated meals', color='b')
@@ -85,7 +135,7 @@ def plot_fit(fit, gen_data):
     Args:
         fit CmdStanMCMC: the model object fit
     """
-    y = fit.stan_variable('pred_y')
+    y = fit.stan_variable('pred_gluc')
     x = gen_data['time']
     shadedplot(x, y, label='GP plot')
     y = fit.stan_variable('baseline_gp')
@@ -131,16 +181,9 @@ def plot_glucose(time, glucose, label, labeladd='', c='b'):
     """
     plt.plot(time, glucose, c, label=label+' '+labeladd)
 
-def plot_meal_timing(gen_data, c='r'):
-    """[summary]
 
-    Args:
-        gen_data (dict): dictionary of generated dataset
-        c (str, optional): color. Defaults to 'r'.
-    """
-    time = gen_data['meal_timing']
-    height = min(gen_data['glucose']) - 0.5
-    plt.vlines(time, -1, height, label='observed meal_timing', color=c)
+    
+    #plt.vlines(time, -1, height, label='observed meal_timing', color=c)
 
 def shadedplot(x, y_samples, label, c='k', quantiles=[0.25, 0.75]):
     """[summary]

@@ -7,7 +7,10 @@ Config file for all the constants needed to run different experiments
 # should be false when developing stan models.
 # note: PARALELLIZE affect the compilation.
 # If paralellized model has been compiled it will be used by default
-PARALELLIZE = False
+PARALELLIZE = True
+
+TRAIN_PERCENTAGE = 0.66
+PATIENT_ID = list(range(14))
 
 # diagnose MCMC stats, takes a bit of time but nessessary for checking for successful fit
 DIAGNOSE = True
@@ -27,7 +30,7 @@ GENERATORNAME = 'generator_generalized'
 DAYS = 3
 
 # name of the model stanfile, "nutrient" has to be included in the name for utils to handle it
-MODELNAME = 'TRmodel_generalized'
+MODELNAME = 'TRmodel_hier'
 
 # seed for random generators
 SEED = 1234
@@ -41,4 +44,4 @@ PLOTFIT = True
 PLOTBASE = True
 PLOTRESP = True
 PLOTMEALS = True
-PLOTSAMPLES = True
+PLOTSAMPLES = False

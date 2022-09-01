@@ -1,38 +1,95 @@
 import numpy as np
 import matplotlib.pyplot as plt
+import pandas as pd
 
-def print_metrics(fit, train_data, test_data):
-    print(fit.stan_variables().keys())
-    print('M1 variance trend:', variance_explained_by_trend(fit))
-    print('M2 variance response:', variance_explained_by_response(fit))
-    print('M3 mse train:', mse_train(fit, train_data))
-    print('M4 mse test:', mse_test(fit, test_data))
-    print('M5 abs error in var:', abs_error_response_outcome(fit))
+from config import PATIENT_ID
+
+ONLY_MEALS = True
+
+def print_metrics(result_data, train_data, test_data):
+    if ONLY_MEALS:
+        filtered_dict(result_data, train_data, test_data)
+    print('----------')
+    pvetrend = variance_explained_by_trend(result_data, train_data)
+    print('M1 variance trend:', pvetrend[1])
+    print(pvetrend[0])
+    pveresp = variance_explained_by_response(result_data, train_data) 
+    print('M2 variance response:', pveresp[1])
+    print(pveresp[0])
+    msetrain = mse(result_data, train_data)
+    print('M3 mse train:', msetrain[1])
+    print(msetrain[0])
+    msetest = mse(result_data, test_data)
+    print('M4 mse test:', msetest[1])
+    print(msetest[0])
+    abserrinvar = abs_error_response_outcome(result_data, test_data)
+    print('M5 abs error in var:', abserrinvar[1])
+    print(abserrinvar[0])
+    print('----------')
 
 
-def variance_explained_by_trend(fit):
-    varb = fit.stan_variable('train_baseline_gp').mean(axis=0).var()
-    varg = fit.stan_variable('train_gluc').mean(axis=0).var()
-    return varb/varg
-
-def variance_explained_by_response(fit):
-    vary = fit.stan_variable('train_y').mean(axis=0).var()
-    varg = fit.stan_variable('train_gluc').mean(axis=0).var()
-    return vary/varg - variance_explained_by_trend(fit)
-
-def mse_test(fit, test_data):
-    pred = fit.stan_variable('test_gluc').mean(axis=0)
-    mse = np.mean(np.square(pred - test_data['glucose']))
-    return mse
 
 
-def mse_train(fit, train_data):
-    pred = fit.stan_variable('train_gluc').mean(axis=0)
-    mse = np.mean(np.square(pred - train_data['glucose']))
-    return mse
+def filtered_dict(result_data, train_data, test_data):
+    mask_train = meal_windows(train_data)
+    mask_test = meal_windows(test_data)
+    train_data['df_gluc'] = train_data['df_gluc'][mask_train]
+    test_data['df_gluc'] = test_data['df_gluc'][mask_test]
+    result_data['df_gluc'] = result_data['df_gluc'][np.concatenate((mask_train, mask_test))]
 
-def abs_error_response_outcome(fit):
-    r = fit.stan_variable('pred_mu').mean(axis=0).var()
-    y = fit.stan_variable('train_gluc').mean(axis=0).var()
-    return np.abs(r-y)
 
+def meal_windows(data):
+    # filters out the data where there is no meal reported with -1 to +3 hour window 
+    times = data['df_gluc']['time']
+    mask = np.full((times.shape), False)
+    for meal_timing in data['df_meal']['time']:
+        mask = mask | (((meal_timing - 1) < times) & (times < (meal_timing + 3)))
+    return mask
+
+
+def variance_explained_by_trend(result_data, train_data):
+    pvetrends = []
+    for id in PATIENT_ID:
+        mask = result_data['df_gluc']['id']==id
+        var_response = result_data['df_gluc']['trend'][mask].var()
+        mask = train_data['df_gluc']['id']==id
+        var_glucose = train_data['df_gluc']['glucose'][mask].var()
+        pvetrends.append(var_response/var_glucose)
+    return np.array(pvetrends), np.mean(pvetrends)
+
+
+def variance_explained_by_response(result_data, train_data):
+    pveresp = []
+    for id in PATIENT_ID:
+        mask = result_data['df_gluc']['id']==id
+        var_clean_response = result_data['df_gluc']['clean_response'][mask].var()
+        mask = train_data['df_gluc']['id']==id
+        var_glucose = train_data['df_gluc']['glucose'][mask].var()
+        pveresp.append(var_clean_response/var_glucose)
+    arr, mean = variance_explained_by_trend(result_data, train_data) 
+    pveresp = np.array(pveresp) - arr
+    return pveresp, np.mean(pveresp)
+
+
+def mse(result_data, data):
+    mse = []
+    for id in PATIENT_ID:
+        mask = result_data['df_gluc']['id']==id
+        y_hat = result_data['df_gluc']['glucose'][mask]
+        mask = data['df_gluc']['id']==id
+        y = data['df_gluc']['glucose'][mask]
+        mse.append(np.mean(np.square(y - y_hat)))
+    return np.array(mse), np.mean(mse)
+
+
+
+
+def abs_error_response_outcome(result_data, test_data):
+    abserr = []
+    for id in PATIENT_ID:
+        mask = result_data['df_gluc']['id']==id
+        var_response = result_data['df_gluc']['total_response'][mask].var()
+        mask = test_data['df_gluc']['id']==id
+        var_glucose = test_data['df_gluc']['glucose'][mask].var()
+        abserr.append(np.abs(var_response - var_glucose))
+    return np.array(abserr), np.mean(abserr)

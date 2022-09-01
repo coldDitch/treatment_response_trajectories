@@ -1,10 +1,10 @@
 import matplotlib.pyplot as plt
 import numpy as np
-from scipy.special import kv
-from scipy.stats import geninvgauss
+from scipy.special import kv, gamma
+from scipy.stats import geninvgauss, invgauss
 
 
-x = np.linspace(0, 2, 100)
+x = np.linspace(0, 10, 100)
 p, a, b = 1, 5, 1
 
 def geninvstan(x, p, a, b):
@@ -19,9 +19,14 @@ def inv_l_gaussian(x,mu, l):
    lpdf = 0.5 * (-l  * (mu - x)**2/(mu**2 * x) + np.log(l) - 3 * np.log(x) - np.log(2 * np.pi))
    return np.exp(lpdf)
 
-y = inv_gaussian(x, 3, 0.1)
-plt.plot(x,y, c='b')
+def inv_gamma(x, a, b):
+    return b**a / gamma(a) * x ** (-a-1) * np.exp(-b/x)
 
-y = inv_l_gaussian(x, 0.5, 0.3)
+
+y = inv_gamma(x, 2, 20)
+
+#y = inv_gaussian(x, 3, 0.1)
+
+#y = inv_l_gaussian(x, 0.5, 0.3)
 plt.plot(x,y, c='r')
 plt.show()

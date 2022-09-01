@@ -1,0 +1,77 @@
+  real inverse_gaussian_lpdf(real x, real mu, real lambda) {
+    return 0.5 * (-lambda *  square(mu - x)/(square(mu) * x) - 3 * log(x) - log(2 * pi()));
+  }
+
+  vector impulse(real response_magnitude, real response_length, vector delta_t) {
+    return response_magnitude * exp(-0.5 * square(delta_t - 3*response_length) / square(response_length));
+  }
+
+  vector impulsev2(real response_magnitude, real response_length, vector delta_t) {
+    return 0.011109 * response_magnitude * exp(delta_t .* (3*response_length - 0.5 * delta_t) / response_length ^ 2);
+  }
+
+  vector response(int N, int n_meals, vector time, vector meal_timing, vector meal_response_magnitudes, vector meal_response_lengths, real base) {
+    vector[N] mu = rep_vector(base, N);
+    for (i in 1:n_meals) {
+        mu += impulsev2(meal_response_magnitudes[i], meal_response_lengths[i], time - meal_timing[i]);
+    }
+    return mu;
+  }
+
+  vector draw_pred_rng(array[] real test_x,
+                       vector glucose,
+                       vector train_mu,
+                       array[] real train_x,
+                       real marg_std,
+                       real lengthscale,
+                       real epsilon,
+                       vector mu2,
+                       real base,
+                       real sigma) {
+    int N1 = rows(glucose);
+    int N2 = size(test_x);
+    vector[N2] f2;
+    vector[N2] f2_mu;
+    {
+      matrix[N1, N1] L_K;
+      vector[N1] K_div_y1;
+      matrix[N1, N2] k_x1_x2;
+      matrix[N1, N2] v_pred;
+      matrix[N2, N2] cov_f2;
+      matrix[N2, N2] diag_delta;
+      matrix[N1, N1] K;
+      K = cov_exp_quad(train_x, marg_std, lengthscale);
+      for (n in 1:N1)
+        K[n, n] = K[n,n] + epsilon + sigma;
+      L_K = cholesky_decompose(K);
+      K_div_y1 = mdivide_left_tri_low(L_K, glucose-train_mu);
+      K_div_y1 = mdivide_right_tri_low(K_div_y1', L_K)';
+      k_x1_x2 = cov_exp_quad(train_x, test_x, marg_std, lengthscale);
+      f2_mu = mu2 + (k_x1_x2' * K_div_y1);
+      v_pred = mdivide_left_tri_low(L_K, k_x1_x2);
+      cov_f2 = cov_exp_quad(test_x, marg_std, lengthscale) - v_pred' * v_pred;
+      diag_delta = diag_matrix(rep_vector(epsilon, N2));
+
+      f2 = multi_normal_rng(f2_mu, cov_f2 + diag_delta);
+    }
+    return f2;
+  }
+
+	real lambda(real L, int m) {
+		real lam;
+		lam = ((m*pi())/(2*L))^2;
+				
+		return lam;
+	}
+	real spd(real alpha, real rho, real w) {
+		real S;
+		S = (alpha^2) * sqrt(2*pi()) * rho * exp(-0.5*(rho^2)*(w^2));
+				
+		return S;
+	}
+	vector phi(real L, int m, vector x) {
+		vector[rows(x)] fi;
+		fi = 1/sqrt(L) * sin(m*pi()/(2*L) * (x+L));
+				
+		return fi;
+	}

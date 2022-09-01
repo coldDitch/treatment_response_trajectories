@@ -1,15 +1,5 @@
 functions {
-  vector impulse(real response_magnitude, real response_length, vector delta_t) {
-    return response_magnitude * exp(-0.5 * (delta_t - 3*response_length).^2 / response_length ^ 2);
-  }
-
-  vector response(int N, int n_meals, real[] time, vector meal_timing, vector meal_response_magnitudes, vector meal_response_lengths, real base) {
-    vector[N] mu = rep_vector(0, N) + base;
-    for (i in 1:n_meals) {
-        mu += impulse(meal_response_magnitudes[i], meal_response_lengths[i], to_vector(time) - meal_timing[i]);
-    }
-    return mu;
-  }
+  #include tr_model_functions.stanfunctions
 }
 
 data {

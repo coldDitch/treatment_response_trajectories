@@ -11,9 +11,8 @@ def fit_varnames(fit):
     Returns:
         [type]: [description]
     """
-    summ = fit.summary()
-    means = summ['Mean']
-    return [key for key, val in means.iteritems() if not '[' in key and not '__' in key or 'plot' in key]
+    df = fit.draws_pd()
+    return [key for key in df.keys() if not '[' in key and not '__' in key or 'plot' in key]
 
 
 def summary(fit):
