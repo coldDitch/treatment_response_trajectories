@@ -25,6 +25,7 @@ def plot_individuals(result_data, train_data, test_data):
         plot_meal_timing(train_data['df_meal'], id)
         plot_meal_timing(test_data['df_meal'], id, have_label=False)
         plt.legend()
+        plt.savefig('../figures/patient'+str(id))
 
 def plot_quantiles(result_data, id, color):
     df = result_data['df_gluc']

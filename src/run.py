@@ -41,11 +41,12 @@ def main():
     #print('fat', fit_gq.stan_variable('fat_magnitude').mean())
     #print('prot', fit_gq.stan_variable('starch_magnitude').mean())
     result_data = stan_to_df(fit_gq, data)
+    result_data_train, result_data_test = test_train_split(result_data, train_percentage=TRAIN_PERCENTAGE)
 
-    print_metrics(result_data, train_data, test_data)
 
-    plot_individuals(result_data, train_data, test_data)
-    plt.show()
+    #plot_individuals(result_data, train_data, test_data)
+    print_metrics(result_data_train, result_data_test, train_data, test_data)
+    #plt.show()
 
 
 if __name__ == '__main__':

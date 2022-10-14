@@ -2,6 +2,7 @@
     extra utility functions
 """
 
+
 def fit_varnames(fit):
     """Find one dimensional variables (non array or log probability variales)
 

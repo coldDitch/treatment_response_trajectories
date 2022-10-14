@@ -4,6 +4,7 @@ functions {
 
 data {
 
+  int<lower=0, upper=1> use_prior;
   int M;
   real L;
 
@@ -31,6 +32,9 @@ transformed data {
       PHI[i][:num_gluc_ind[i],m] = phi(L, m, time[ind_idx_gluc[i][:num_gluc_ind[i]]]);
     }
   }
+  vector[N] timec = time - mean(time);
+  vector[n_meals] meal_timingc = meal_timing - mean(time);
+  
 }
 
 parameters {
@@ -38,7 +42,6 @@ parameters {
   vector<lower=0>[num_nutrients] response_magnitude_hier_std;
   vector[num_nutrients] response_length_hier_means;
   vector<lower=0>[num_nutrients] response_length_hier_std;
-
   array[num_ind] vector[M] beta_GP;
   array[num_ind] real<lower=0> lengthscale;
   array[num_ind] real<lower=0> marg_std;
@@ -53,9 +56,9 @@ parameters {
 
 model {
   response_length_hier_means ~ normal(0, 1);
-  response_length_hier_std ~ normal(0, 1);
-  response_magnitude_hier_means ~ normal(0, 1);
-  response_magnitude_hier_std ~ normal(0, 1);
+  response_length_hier_std ~ normal(0.2, 0.2);
+  response_magnitude_hier_means ~ normal(0, 10);
+  response_magnitude_hier_std ~ normal(0.2, 0.2);
 
 
 
@@ -63,9 +66,9 @@ model {
 
     //priors
     beta_GP[i] ~ normal(0, 1);
-    lengthscale[i] ~ inv_gamma(1, 10);
-    sigma[i] ~ normal(0, 0.1);
-    marg_std[i] ~ normal(0, 1);
+    lengthscale[i] ~ inv_gamma(1, 1);
+    sigma[i] ~ normal(0, 1);
+    marg_std[i] ~ normal(0.2, 0.2);
     base[i] ~ normal(4, 1);
     response_magnitude_params[i] ~ normal(response_magnitude_hier_means, response_magnitude_hier_std);
     response_length_params[i] ~ normal(response_length_hier_means, response_length_hier_std);
@@ -84,17 +87,19 @@ model {
     vector[ind_meal] meal_response_magnitudes = ind_nutr * response_magnitude_params[i];
     vector[ind_meal] meal_response_lengths = ind_nutr * response_length_params[i];
     vector[ind_gluc] mu = response(ind_gluc, ind_meal, ind_time, ind_meal_eiv, meal_response_magnitudes, meal_response_lengths, base[i]);
-    
-    for(m in 1:M){ 
-      diagSPD[m] = sqrt(spd(marg_std[i], lengthscale[i], sqrt(lambda(L, m)))); 
+
+    for(m in 1:M){
+      diagSPD[m] = sqrt(spd(marg_std[i], lengthscale[i], sqrt(lambda(L, m))));
     }
-    
+
     SPD_beta = diagSPD .* beta_GP[i];
-    
+
     gp_mu = PHI[i][:num_gluc_ind[i]] * SPD_beta;
 
-    for (j in 1:ind_meal) {
-      meal_response_magnitudes[j] ~ inv_gamma(1, 3);
+    if (use_prior){
+      for (j in 1:ind_meal) {
+        meal_response_magnitudes[j] ~ inv_gamma(1, 3);
+      }
     }
 
     meal_reporting_noise[i] ~ normal(0, 0.25);

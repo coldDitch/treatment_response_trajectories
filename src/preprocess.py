@@ -1,12 +1,13 @@
 import pandas as pd
 import numpy as np
+from config import PRIOROVERRESPONSEH, NUTRIENTS
 
 
-NUTRIENTS = ['STARCH', 'SUGAR', 'FIBC', 'FAT', 'PROT']
 
 def stan_to_df(gq, data):
     df_gluc = data['df_gluc'].copy()
     df_meal = data['df_meal'].copy()
+    df_meal['']
     df_gluc['glucose']  = np.quantile(gq.stan_variable('glucose'), 0.5, axis=0)
     df_gluc['q25']  = np.quantile(gq.stan_variable('glucose'), 0.25, axis=0)
     df_gluc['q75']  = np.quantile(gq.stan_variable('glucose'), 0.75, axis=0)
@@ -21,6 +22,8 @@ def data_to_stan(train_data, test_data):
     pred_data = create_ind_matrix(pred_data)
     train_data = dfs_to_dict(train_data)
     pred_data = dfs_to_dict(pred_data)
+    pred_data['use_prior'] = int(PRIOROVERRESPONSEH) 
+    train_data['use_prior'] = int(PRIOROVERRESPONSEH) 
 
     ## add approximation configuration parameters
 

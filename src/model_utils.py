@@ -5,11 +5,11 @@
 import os
 import cmdstanpy
 import numpy as np
-from config import PARALELLIZE, ALGORITHM, MODELNAME, SEED, TRAIN_PERCENTAGE, PATIENT_ID
+from config import PARALELLIZE, ALGORITHM, MODELNAME, SEED, TRAIN_PERCENTAGE, PATIENT_ID, PRIOROVERRESPONSEH
 from preprocess import data_to_stan
 
 def name_run():
-    list_of_params = [MODELNAME, PATIENT_ID, TRAIN_PERCENTAGE, SEED]
+    list_of_params = [MODELNAME, PATIENT_ID, TRAIN_PERCENTAGE, SEED, PRIOROVERRESPONSEH]
     list_of_params = [str(el) for el in list_of_params]
     name = '_'.join(list_of_params)
     return name
@@ -70,7 +70,8 @@ def fit_model(data, test_data=None):
             show_progress=True,
             seed=SEED,
             inits=inits,
-            iter_warmup=1000)
+            iter_warmup=1000,
+            refresh=1)
     else:
         raise Exception('not valid inference method')
     fit.save_csvfiles('posterior_data/' + name_run())
@@ -84,7 +85,7 @@ def handle_eiv(data, test_data, inits):
     inits['marg_std'] = np.full(data['num_ind'], 1)
     inits['sigma'] = np.full(data['num_ind'], 0.5)
     inits['base'] = np.full(data['num_ind'], 5)
-    inits['response_magnitude_params'] = np.full((data['num_ind'], data['num_nutrients']), 1)
+    inits['response_magnitude_params'] = np.full((data['num_ind'], data['num_nutrients']), 5)
     inits['response_length_params'] = np.full((data['num_ind'], data['num_nutrients']), 0.5)
-    inits['meal_reporting_noise'] = np.full(data['num_ind'], 0.3)
+    inits['meal_reporting_noise'] = np.full(data['num_ind'], 0.5)
     inits['meal_timing_eiv'] = data['meal_timing']

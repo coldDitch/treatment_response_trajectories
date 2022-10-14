@@ -4,22 +4,23 @@ functions {
 
 data {
 
-  int<lower=0, upper=1> use_prior;
   int M;
   real L;
 
   int N;
   int n_meals;
+  int n_train_meals;
   int num_nutrients;
 
   int num_ind;
   array[num_ind] int num_gluc_ind;
   array[num_ind] int num_meals_ind;
+  array[num_ind] int num_train_meals_ind;
   array[num_ind, N] int ind_idx_gluc;
   array[num_ind, n_meals] int ind_idx_meals;
+  array[num_ind, n_train_meals] int ind_idx_train_meals;
 
   vector[N] time;
-  vector[N] glucose;
   vector[n_meals] meal_timing;
   matrix[n_meals, num_nutrients] nutrients;
 }
@@ -35,43 +36,51 @@ transformed data {
 }
 
 parameters {
+
+  vector<lower=0>[num_nutrients] response_magnitude_hier_means;
+  vector<lower=0>[num_nutrients] response_magnitude_hier_std;
+  vector<lower=0>[num_nutrients] response_length_hier_means;
+  vector<lower=0>[num_nutrients] response_length_hier_std;
+
   array[num_ind] vector[M] beta_GP;
   array[num_ind] real<lower=0> lengthscale;
   array[num_ind] real<lower=0> marg_std;
   array[num_ind] real<lower=0> sigma;
   array[num_ind] real<lower=0> base;
-  array[num_ind] vector[num_nutrients] response_magnitude_params;
+  array[num_ind] vector<lower=0>[num_nutrients] response_magnitude_params;
   array[num_ind] vector<lower=0>[num_nutrients] response_length_params;
   array[num_ind] real<lower=0> meal_reporting_noise;
-  vector[n_meals] meal_timing_eiv;
+  vector[n_train_meals] meal_timing_eiv;
 }
 
 
-model {
+generated quantities {
+  vector[N] glucose;
+  vector[N] clean_response;
+  vector[N] trend;
+  vector[N] total_response;
 
   for (i in 1:num_ind) {
-
-    //priors
-    beta_GP[i] ~ normal(0, 1);
-    lengthscale[i] ~ inv_gamma(1, 1);
-    sigma[i] ~ normal(0, 0.1);
-    marg_std[i] ~ normal(0, 1);
-    base[i] ~ normal(4, 1);
-    response_magnitude_params[i] ~ normal(0, 10);
-    response_length_params[i] ~ normal(0, 1);
-
   //likelihoods for each individual
     int ind_gluc = num_gluc_ind[i];
     int ind_meal = num_meals_ind[i];
+    int ind_train_meal = num_train_meals_ind[i];
     array[ind_gluc] int gluc_selector = ind_idx_gluc[i][:num_gluc_ind[i]];
     array[ind_meal] int meal_selector = ind_idx_meals[i][:num_meals_ind[i]];
     vector[ind_gluc] ind_time = time[gluc_selector];
-    vector[ind_meal] ind_meal_eiv = meal_timing_eiv[meal_selector];
+    vector[ind_meal] ind_meal_eiv;
+    {
+      ind_meal_eiv[:ind_train_meal] = meal_timing_eiv[ind_idx_train_meals[i][:num_train_meals_ind[i]]];
+      for (m in ind_train_meal+1:ind_meal){
+        ind_meal_eiv[m] = normal_rng(meal_timing[meal_selector][m],meal_reporting_noise[i]);
+      }
+    }
     matrix[ind_meal, num_nutrients] ind_nutr = nutrients[meal_selector];
     vector[ind_gluc] gp_mu;
     vector[M] diagSPD;
     vector[M] SPD_beta;
-    vector[ind_meal] meal_response_magnitudes = ind_nutr * response_magnitude_params[i];
+
+    vector[ind_meal] meal_response_magnitudes = (1-inv_logit(ind_nutr[,4:] * response_magnitude_params[i][4:])) .* (ind_nutr[,:3] * response_magnitude_params[i][:3]);
     vector[ind_meal] meal_response_lengths = ind_nutr * response_length_params[i];
     vector[ind_gluc] mu = response(ind_gluc, ind_meal, ind_time, ind_meal_eiv, meal_response_magnitudes, meal_response_lengths, base[i]);
     
@@ -83,23 +92,13 @@ model {
     
     gp_mu = PHI[i][:num_gluc_ind[i]] * SPD_beta;
 
-
-    /*for (j in 1:ind_meal) {
-      meal_response_magnitudes[j] ~ inv_gamma(1, 3);
-    }*/
-
-    if (use_prior){
-      for (j in 1:ind_meal) {
-        meal_response_magnitudes[j] ~ inv_gamma(1, 3);
-      }
+    trend[gluc_selector] = gp_mu + base[i];
+    clean_response[gluc_selector] = gp_mu + mu;
+    total_response[gluc_selector] = mu - base[i];
+    for (g in 1:ind_gluc){
+      glucose[gluc_selector[g]] = normal_rng((gp_mu + mu)[g], sigma[i]);
     }
 
-    meal_reporting_noise[i] ~ normal(0, 0.25);
 
-
-    glucose[gluc_selector] ~ normal(gp_mu + mu, sigma[i]);
-
-
-    meal_timing[meal_selector] ~ normal(meal_timing_eiv[meal_selector], meal_reporting_noise[i]);
   }
 }
