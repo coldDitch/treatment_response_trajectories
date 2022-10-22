@@ -36,19 +36,18 @@ transformed data {
 }
 
 parameters {
-
-  vector<lower=0>[num_nutrients] response_magnitude_hier_means;
+  vector[num_nutrients] response_magnitude_hier_means;
   vector<lower=0>[num_nutrients] response_magnitude_hier_std;
-  vector<lower=0>[num_nutrients] response_length_hier_means;
-  vector<lower=0>[num_nutrients] response_length_hier_std;
+  real<lower=0> response_const_means;
+  real<lower=0> response_const_std;
 
   array[num_ind] vector[M] beta_GP;
   array[num_ind] real<lower=0> lengthscale;
   array[num_ind] real<lower=0> marg_std;
   array[num_ind] real<lower=0> sigma;
   array[num_ind] real<lower=0> base;
-  array[num_ind] vector<lower=0>[num_nutrients] response_magnitude_params;
-  array[num_ind] vector<lower=0>[num_nutrients] response_length_params;
+  array[num_ind] vector[num_nutrients] response_magnitude_params;
+  array[num_ind] real<lower=0> response_const;
   array[num_ind] real<lower=0> meal_reporting_noise;
   vector[n_train_meals] meal_timing_eiv;
 }
@@ -59,6 +58,9 @@ generated quantities {
   vector[N] clean_response;
   vector[N] trend;
   vector[N] total_response;
+  vector[n_train_meals]	rep_meal_response_timings;
+  vector[n_train_meals] rep_meal_response_lenghts;
+  vector[n_train_meals] rep_meal_response_magnitudes;
 
   for (i in 1:num_ind) {
   //likelihoods for each individual
@@ -71,6 +73,7 @@ generated quantities {
     vector[ind_meal] ind_meal_eiv;
     {
       ind_meal_eiv[:ind_train_meal] = meal_timing_eiv[ind_idx_train_meals[i][:num_train_meals_ind[i]]];
+	  rep_meal_response_timings[ind_idx_train_meals[i][:num_train_meals_ind[i]]] = meal_timing_eiv[ind_idx_train_meals[i][:num_train_meals_ind[i]]];
       for (m in ind_train_meal+1:ind_meal){
         ind_meal_eiv[m] = normal_rng(meal_timing[meal_selector][m],meal_reporting_noise[i]);
       }
@@ -81,7 +84,11 @@ generated quantities {
     vector[M] SPD_beta;
 
     vector[ind_meal] meal_response_magnitudes = (1-inv_logit(ind_nutr[,4:] * response_magnitude_params[i][4:])) .* (ind_nutr[,:3] * response_magnitude_params[i][:3]);
-    vector[ind_meal] meal_response_lengths = ind_nutr * response_length_params[i];
+
+    vector[ind_meal] meal_response_lengths = rep_vector(response_const[i], ind_meal);
+
+  rep_meal_response_lenghts[ind_idx_train_meals[i][:num_train_meals_ind[i]]] = meal_response_lengths[:num_train_meals_ind[i]];
+  rep_meal_response_magnitudes[ind_idx_train_meals[i][:num_train_meals_ind[i]]] = meal_response_magnitudes[:num_train_meals_ind[i]];
     vector[ind_gluc] mu = response(ind_gluc, ind_meal, ind_time, ind_meal_eiv, meal_response_magnitudes, meal_response_lengths, base[i]);
     
     for(m in 1:M){ 

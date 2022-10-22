@@ -65,8 +65,8 @@ def fit_model(data, test_data=None):
     if ALGORITHM == 'mcmc':
         fit = model.sample(data=train_data,
             output_dir='logs',
-            parallel_chains=4,
-            threads_per_chain=2,
+            parallel_chains=3,
+            chains=3,
             show_progress=True,
             seed=SEED,
             inits=inits,

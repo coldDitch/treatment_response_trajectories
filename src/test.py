@@ -1,6 +1,9 @@
-import pandas as pd
+from preprocess import public_data
+
+data = public_data(ids=list(range(14)))
+
+for id in range(14):
+    print(id)
+    print(sum(data['df_gluc']['id'] == id))
 
 
-df = pd.read_csv('data/public_dataset.csv')
-
-print(df['id'].unique())

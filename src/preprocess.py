@@ -7,14 +7,15 @@ from config import PRIOROVERRESPONSEH, NUTRIENTS
 def stan_to_df(gq, data):
     df_gluc = data['df_gluc'].copy()
     df_meal = data['df_meal'].copy()
-    df_meal['']
+    gluc_samples = gq.stan_variable('glucose')
     df_gluc['glucose']  = np.quantile(gq.stan_variable('glucose'), 0.5, axis=0)
     df_gluc['q25']  = np.quantile(gq.stan_variable('glucose'), 0.25, axis=0)
     df_gluc['q75']  = np.quantile(gq.stan_variable('glucose'), 0.75, axis=0)
     df_gluc['trend'] = gq.stan_variable('trend').mean(axis=0)
     df_gluc['total_response'] = gq.stan_variable('total_response').mean(axis=0)
+    resp_samples = gq.stan_variable('total_response')
     df_gluc['clean_response'] = gq.stan_variable('clean_response').mean(axis=0)
-    return {'df_gluc': df_gluc, 'df_meal': df_meal}
+    return {'df_gluc': df_gluc, 'df_meal': df_meal, 'gluc_samples': gluc_samples, 'resp_samples': resp_samples}
 
 def data_to_stan(train_data, test_data):
     pred_data = combine_to_prediction_data(train_data, test_data)
@@ -28,21 +29,23 @@ def data_to_stan(train_data, test_data):
     ## add approximation configuration parameters
 
     train_data['L'] = 5/2*pred_data['time'].max()
-    train_data['M'] = 100
+    train_data['M'] = 200
 
     pred_data['L'] = 5/2*pred_data['time'].max()
-    pred_data['M'] = 100
+    pred_data['M'] = 200
+
     pred_data['n_train_meals'] = len(train_data['meal_timing'])
     pred_data['num_train_meals_ind'] = train_data['num_meals_ind']
     pred_data['ind_idx_train_meals'] = train_data['ind_idx_meals']
     update_n(train_data)
     update_n(pred_data)
+
     return train_data, pred_data
 
 def dfs_to_dict(data):
-    data['glucose'] = data['df_gluc']['glucose']
-    data['time'] = data['df_gluc']['time']
-    data['meal_timing'] = data['df_meal']['time']
+    data['glucose'] = data['df_gluc']['glucose'].values
+    data['time'] = data['df_gluc']['time'].values
+    data['meal_timing'] = data['df_meal']['time'].values
     data['nutrients'] = data['df_meal'][NUTRIENTS].values
     return data
 
@@ -81,7 +84,8 @@ def public_data(ids=[1]):
     for nutrient in nutrients:
         df[nutrient] = minmax_scale(df[nutrient])
     df = df[df['id'].isin(ids)]
-    df['time'] = df['time']/60
+    time_mean = df['time'].mean()
+    df['time'] = df['time'] - time_mean 
     mask = df[nutrients].notna().any(1)
     df_meal = df.loc[mask, nutrients + ['time', 'id']]
     df_meal = df_meal.rename({'time': 'meal_timing'})

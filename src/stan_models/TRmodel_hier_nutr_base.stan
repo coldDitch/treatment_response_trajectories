@@ -3,11 +3,7 @@ functions {
 }
 
 data {
-
   int<lower=0, upper=1> use_prior;
-  int M;
-  real L;
-
   int N;
   int n_meals;
   int num_nutrients;
@@ -26,12 +22,6 @@ data {
 
 transformed data {
   real epsilon = 1e-3;
-  array[num_ind] matrix[N, M] PHI;
-  for (i in 1:num_ind) {
-    for (m in 1:M) {
-      PHI[i][:num_gluc_ind[i],m] = phi(L, m, time[ind_idx_gluc[i][:num_gluc_ind[i]]]);
-    }
-  }
 }
 
 parameters {
@@ -39,12 +29,10 @@ parameters {
   vector<lower=0>[num_nutrients] response_magnitude_hier_std;
   real<lower=0> response_const_means;
   real<lower=0> response_const_std;
-
-  array[num_ind] vector[M] beta_GP;
+  array[num_ind] real<lower=0> base;
   array[num_ind] real<lower=0> lengthscale;
   array[num_ind] real<lower=0> marg_std;
   array[num_ind] real<lower=0> sigma;
-  array[num_ind] real<lower=0> base;
   array[num_ind] vector[num_nutrients] response_magnitude_params;
   array[num_ind] real<lower=0> response_const;
   array[num_ind] real<lower=0> meal_reporting_noise;
@@ -63,8 +51,7 @@ model {
   for (i in 1:num_ind) {
 
     //priors
-    beta_GP[i] ~ normal(0, 1);
-    lengthscale[i] ~ normal(0, 10);
+    lengthscale[i] - 10 ~ normal(0, 10);
     sigma[i] ~ normal(0, 10);
     marg_std[i] ~ normal(0, 0.1);
     base[i] ~ normal(4, 1);
@@ -79,20 +66,16 @@ model {
     vector[ind_gluc] ind_time = time[gluc_selector];
     vector[ind_meal] ind_meal_eiv = meal_timing_eiv[meal_selector];
     matrix[ind_meal, num_nutrients] ind_nutr = nutrients[meal_selector];
-    vector[ind_gluc] gp_mu;
-    vector[M] diagSPD;
-    vector[M] SPD_beta;
     vector[ind_meal] meal_response_magnitudes = (1-inv_logit(ind_nutr[,4:] * response_magnitude_params[i][4:])) .* (ind_nutr[,:3] * response_magnitude_params[i][:3]);
     vector[ind_meal] meal_response_lengths = rep_vector(response_const[i], ind_meal);
     vector[ind_gluc] mu = response(ind_gluc, ind_meal, ind_time, ind_meal_eiv, meal_response_magnitudes, meal_response_lengths, base[i]);
-
-    for(m in 1:M){
-      diagSPD[m] = sqrt(spd(marg_std[i], lengthscale[i], sqrt(lambda(L, m))));
-    }
-
-    SPD_beta = diagSPD .* beta_GP[i];
-
-    gp_mu = PHI[i][:num_gluc_ind[i]] * SPD_beta;
+	
+	matrix[ind_gluc, ind_gluc] K = gp_exp_quad_cov(to_array_1d(ind_time), marg_std[i], lengthscale[i]);
+	matrix[ind_gluc, ind_gluc] L_K;
+	for (j in 1:ind_meal) {
+		K[j,j] = K[j,j] + sigma[i];
+	}
+	L_K = cholesky_decompose(K);
 
     if (use_prior){
       for (j in 1:ind_meal) {
@@ -103,7 +86,7 @@ model {
     meal_reporting_noise[i] ~ normal(0, 10);
 
 
-    glucose[gluc_selector] ~ normal(gp_mu + mu, sigma[i]);
+    glucose[gluc_selector] ~ multi_normal_cholesky(mu, L_K);
 
 
     meal_timing[meal_selector] ~ normal(meal_timing_eiv[meal_selector], meal_reporting_noise[i]);

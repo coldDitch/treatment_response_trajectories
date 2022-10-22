@@ -11,7 +11,7 @@ Config file for all the constants needed to run different experiments
 PARALELLIZE = False
 
 TRAIN_PERCENTAGE = 0.33
-PATIENT_ID = list(range(14))
+PATIENT_ID = list(range(3))
 
 # diagnose MCMC stats, takes a bit of time but nessessary for checking for successful fit
 DIAGNOSE = True
@@ -35,7 +35,7 @@ PRIOROVERRESPONSEH = False
 NUTRIENTS = ['STARCH', 'SUGAR', 'FIBC', 'FAT', 'PROT']
 
 # name of the model stanfile, "nutrient" has to be included in the name for utils to handle it
-MODELNAME = 'TRmodel_hier_nutr'
+MODELNAME = 'TRmodel_hier_nutr_base'
 
 # seed for random generators
 SEED = 12345

@@ -14,11 +14,12 @@ az.style.use("arviz-darkgrid")
 
 def plot_individuals(result_data, train_data, test_data):
     for id in PATIENT_ID:
-        plt.figure()
+        plt.figure(figsize=(50, 5))
         plt.title('Patient number '+str(id))
         mask = result_data['df_gluc']['id'] == id
         plt.plot(result_data['df_gluc']['time'][mask], result_data['df_gluc']['trend'][mask], color='y')
-        plot_id(result_data, id, label='model fit', color='b')
+        plot_line(result_data, id, label='model fit', color='b')
+        plot_traces(result_data, id )
         plot_quantiles(result_data, id, color='b')
         plot_id(train_data, id, label='train data',color='r')
         plot_id(test_data, id, label='test_data', color='m')
@@ -27,15 +28,29 @@ def plot_individuals(result_data, train_data, test_data):
         plt.legend()
         plt.savefig('../figures/patient'+str(id))
 
+def plot_traces(data, id, label='', color='y'):
+    mask = data['df_gluc']['id']==id
+    resp = data['resp_samples'][:100, mask].T
+    plt.plot(data['df_gluc'][mask]['time'], resp, color, alpha=0.2)
+
+def plot_glucose_sample_trajectories(result_data, id, color):
+    mask = result_data['df_gluc']['id']==id
+    df = result_data['df_gluc'][mask]
+    plt.plot(df['time'], result_data['gluc_samples'][:10, mask].T, alpha=0.2, color=color)
+
 def plot_quantiles(result_data, id, color):
     df = result_data['df_gluc']
     mask = result_data['df_gluc']['id']==id
     df = df[mask]
     plt.fill_between(df['time'], df['q25'], df['q75'], alpha=0.2, color=color)
 
-def plot_id(data, id, label, color='b'):
+def plot_line(data, id, label, color='b'):
     mask = data['df_gluc']['id']==id
     plt.plot(data['df_gluc']['time'][mask], data['df_gluc']['glucose'][mask], label=label, color=color)
+
+def plot_id(data, id, label, color='b'):
+    mask = data['df_gluc']['id']==id
+    plt.scatter(data['df_gluc']['time'][mask], data['df_gluc']['glucose'][mask], label=label, color=color)
 
 def plot_meal_timing(data, id, c='r', have_label=True):
     """[summary]
@@ -55,8 +70,9 @@ def plot_meal_timing(data, id, c='r', have_label=True):
         label = nutrients[i]
         if (not have_label):
             label = None
-        plt.bar(time, height=nutr[:,i], bottom=y_bottom, label=label)
-        y_bottom = y_bottom + nutr[:,i]
+        height_mult = 3
+        plt.bar(time, height=height_mult*nutr[:,i], bottom=y_bottom, width=20, label=label)
+        y_bottom = y_bottom + height_mult*nutr[:,i]
 
 def plot_samples_grid(fit):
     """Creates a pairplot of posterior samples for one dimensional posterior parameters
