@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 from scipy import stats
 
-from plot_utils import plot_baseline, plot_datagen, plot_fit, plot_response, plot_meal_pred, plot_samples_grid, plot_samples, plot_individuals
+from plot_utils import plot_individuals, plot_id, plot_meal_timing
 from data_generators import generate_data
 from model_utils import find_fit
 from preprocess import public_data, test_train_split, stan_to_df, df_sorted
@@ -30,6 +30,15 @@ def main():
     print('num meals', test_data['df_meal']['time'].shape)
     print('train meals', train_data['df_meal']['time'].shape)
 
+    #for id in train_data['df_gluc'].id.unique():
+    #    plt.figure(figsize=(50, 5))
+    #    plt.title('Patient number '+str(id))
+    #    plot_id(train_data, id, label='train data',color='r')
+    #    plot_id(test_data, id, label='test_data', color='m')
+    #    plot_meal_timing(train_data['df_meal'], id)
+    #    plot_meal_timing(test_data['df_meal'], id, have_label=False)
+    #plt.show()
+
     fit_gq = find_fit(train_data, test_data)
 
     #print('lengthscale:', fit_gq.stan_variable('lengthscale').mean(axis=0))
@@ -38,6 +47,9 @@ def main():
     #print('base:', fit_gq.stan_variable('base').mean(axis=0))
     def print_var(var):
         print(var, np.quantile(fit_gq.stan_variable(var), 0.5, axis=0))
+
+    def print_var_std(var):
+        print(var + 'std', np.std(fit_gq.stan_variable(var), axis=0))
 
     #print('meal reporting noise', fit_gq.stan_variable('meal_reporting_noise').mean(axis=0))
 
@@ -52,13 +64,22 @@ def main():
 
 
 
-        
+    print_var('response_magnitude_hier_means')
+    print_var('response_magnitude_hier_std')
+    print_var('base')
+    print_var('sigma')
+    print_var('response_magnitude_params_raw')
+    print_var('response_length_params')
+    print_var('response_const')
+    print_var('meal_reporting_noise')
+    print_var('meal_reporting_bias')
+    print_var('meal_timing_eiv_raw')
+    print_var('beta')
+    print_var('theta')
 
     #print_var('rep_meal_response_lenghts')
     #print_var('rep_meal_response_magnitudes')
-    print_var('response_magnitude_params')
-    print_var('response_const')
-    print_var('lengthscale')
+    #print_var('lengthscale')
     
     #lengths = fit_gq.stan_variable('rep_meal_response_lenghts').mean(axis=0)
     #print('lengths', lengths.size)
@@ -83,10 +104,11 @@ def main():
     #print('fat', fit_gq.stan_variable('fat_magnitude').mean())
     #print('prot', fit_gq.stan_variable('starch_magnitude').mean())
     result_data = stan_to_df(fit_gq, data)
+
+    print('REP', result_data['df_meal']['rep_magnitude'].mean())
     result_data_train, result_data_test = test_train_split(result_data, train_percentage=TRAIN_PERCENTAGE)
 
-
-    plot_individuals(result_data, train_data, test_data)
+    #plot_individuals(result_data, train_data, test_data)
     print_metrics(result_data_train, result_data_test, train_data, test_data)
 
     #response_fun(np.arange(-1, 3, 0.1).reshape(1,-1))

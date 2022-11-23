@@ -8,10 +8,13 @@ Config file for all the constants needed to run different experiments
 # note: PARALELLIZE affect the compilation.
 # If paralellized model has been compiled it will be used by default
 
+COMPILE = True
+
 PARALELLIZE = False
 
-TRAIN_PERCENTAGE = 0.33
-PATIENT_ID = list(range(3))
+TRAIN_PERCENTAGE = 0.66
+PATIENT_ID = list(range(9)) + list(range(10, 14))
+
 
 # diagnose MCMC stats, takes a bit of time but nessessary for checking for successful fit
 DIAGNOSE = True
@@ -30,12 +33,12 @@ GENERATORNAME = 'generator_generalized'
 
 DAYS = 3
 
-PRIOROVERRESPONSEH = False
+PRIOROVERRESPONSEH = True
 
 NUTRIENTS = ['STARCH', 'SUGAR', 'FIBC', 'FAT', 'PROT']
 
 # name of the model stanfile, "nutrient" has to be included in the name for utils to handle it
-MODELNAME = 'TRmodel_hier_nutr_base'
+MODELNAME = 'TRmodel_hier_arma'
 
 # seed for random generators
 SEED = 12345

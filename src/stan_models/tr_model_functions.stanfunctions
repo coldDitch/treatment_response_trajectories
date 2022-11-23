@@ -10,10 +10,14 @@
     return 0.011109 * response_magnitude * exp(delta_t .* (3*response_length - 0.5 * delta_t) / response_length ^ 2);
   }
 
+  vector impulsev3(real response_magnitude, real response_length, vector delta_t) {
+    return response_magnitude * exp(-0.5 * delta_t ^ 2 /(response_length)^2);
+  }
+
   vector response(int N, int n_meals, vector time, vector meal_timing, vector meal_response_magnitudes, vector meal_response_lengths, real base) {
     vector[N] mu = rep_vector(base, N);
     for (i in 1:n_meals) {
-        mu += impulsev2(meal_response_magnitudes[i], meal_response_lengths[i], time - meal_timing[i]);
+        mu += impulsev3(meal_response_magnitudes[i], meal_response_lengths[i], time - meal_timing[i]);
     }
     return mu;
   }

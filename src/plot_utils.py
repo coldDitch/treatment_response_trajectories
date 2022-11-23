@@ -18,8 +18,10 @@ def plot_individuals(result_data, train_data, test_data):
         plt.title('Patient number '+str(id))
         mask = result_data['df_gluc']['id'] == id
         plt.plot(result_data['df_gluc']['time'][mask], result_data['df_gluc']['trend'][mask], color='y')
+        #plt.scatter(result_data['df_gluc']['time'][mask], result_data['df_gluc']['ins'][mask], marker='*', s=1000)
         plot_line(result_data, id, label='model fit', color='b')
-        plot_traces(result_data, id )
+        plot_traces(result_data, id)
+        #plot_traces(result_data, id, samplesname='gluc_samples', color='c')
         plot_quantiles(result_data, id, color='b')
         plot_id(train_data, id, label='train data',color='r')
         plot_id(test_data, id, label='test_data', color='m')
@@ -28,9 +30,9 @@ def plot_individuals(result_data, train_data, test_data):
         plt.legend()
         plt.savefig('../figures/patient'+str(id))
 
-def plot_traces(data, id, label='', color='y'):
+def plot_traces(data, id, samplesname='resp_samples', label='', color='y'):
     mask = data['df_gluc']['id']==id
-    resp = data['resp_samples'][:100, mask].T
+    resp = data[samplesname][:20, mask].T
     plt.plot(data['df_gluc'][mask]['time'], resp, color, alpha=0.2)
 
 def plot_glucose_sample_trajectories(result_data, id, color):
@@ -70,7 +72,7 @@ def plot_meal_timing(data, id, c='r', have_label=True):
         label = nutrients[i]
         if (not have_label):
             label = None
-        height_mult = 3
+        height_mult = 2/5
         plt.bar(time, height=height_mult*nutr[:,i], bottom=y_bottom, width=20, label=label)
         y_bottom = y_bottom + height_mult*nutr[:,i]
 

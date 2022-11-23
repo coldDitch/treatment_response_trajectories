@@ -9,12 +9,17 @@ def stan_to_df(gq, data):
     df_meal = data['df_meal'].copy()
     gluc_samples = gq.stan_variable('glucose')
     df_gluc['glucose']  = np.quantile(gq.stan_variable('glucose'), 0.5, axis=0)
-    df_gluc['q25']  = np.quantile(gq.stan_variable('glucose'), 0.25, axis=0)
-    df_gluc['q75']  = np.quantile(gq.stan_variable('glucose'), 0.75, axis=0)
+    df_gluc['q25']  = np.quantile(gq.stan_variable('glucose'), 0.025, axis=0)
+    df_gluc['q75']  = np.quantile(gq.stan_variable('glucose'), 0.975, axis=0)
     df_gluc['trend'] = gq.stan_variable('trend').mean(axis=0)
     df_gluc['total_response'] = gq.stan_variable('total_response').mean(axis=0)
     resp_samples = gq.stan_variable('total_response')
     df_gluc['clean_response'] = gq.stan_variable('clean_response').mean(axis=0)
+    df_gluc['log_density'] = gq.stan_variable('SAP').mean(axis=0)
+    df_meal['rep_timing'] = gq.stan_variable('rep_meal_response_timings').mean(axis=0)
+    df_meal['rep_length'] = gq.stan_variable('rep_meal_response_lenghts').mean(axis=0)
+    df_meal['rep_magnitude'] = gq.stan_variable('rep_meal_response_magnitudes').mean(axis=0)
+
     return {'df_gluc': df_gluc, 'df_meal': df_meal, 'gluc_samples': gluc_samples, 'resp_samples': resp_samples}
 
 def data_to_stan(train_data, test_data):
@@ -34,15 +39,27 @@ def data_to_stan(train_data, test_data):
     pred_data['L'] = 5/2*pred_data['time'].max()
     pred_data['M'] = 200
 
+    train_data['lengthscale'] = 120
+    train_data['marg_std'] = 1
+    
+    pred_data['lengthscale'] = 120
+    pred_data['marg_std'] = 1
+    
+
+
     pred_data['n_train_meals'] = len(train_data['meal_timing'])
     pred_data['num_train_meals_ind'] = train_data['num_meals_ind']
+    pred_data['num_train_gluc_ind'] = train_data['num_gluc_ind']
     pred_data['ind_idx_train_meals'] = train_data['ind_idx_meals']
     update_n(train_data)
     update_n(pred_data)
+    pred_data['N_train'] = train_data['N']
+    pred_data['glucose_train'] = pred_data['glucose']
 
     return train_data, pred_data
 
 def dfs_to_dict(data):
+    data['id'] = data['df_gluc']['id'].values
     data['glucose'] = data['df_gluc']['glucose'].values
     data['time'] = data['df_gluc']['time'].values
     data['meal_timing'] = data['df_meal']['time'].values
@@ -52,6 +69,26 @@ def dfs_to_dict(data):
 
 def minmax_scale(x):
     return (x - np.min(x))/(np.max(x)-np.min(x))
+
+def logistic_scale(x):
+    return 1/(1+np.exp(-x))
+
+def unit_scaled(x):
+    return x/(1+x)
+
+def result_data_split(data, train_percentage=0.8):
+    train, test = test_train_split(data, train_percentage)
+    df_gluc = data['df_gluc']
+    train_gluc_samples = 
+    ids = pd.unique(df_gluc['id'])
+    for id in ids:
+        df_gluc_ind = df_gluc[df_gluc['id']==id]
+        time_indx = int(len(df_gluc_ind['time']) * train_percentage)
+        time_cutoff = df_gluc_ind.iloc[time_indx]['time']
+        gluc_mask = df_gluc_ind['time'] <= time_cutoff
+        data['gluc_samples'][:, time_indx]
+
+
 
 
 def test_train_split(data, train_percentage=0.8):
@@ -82,11 +119,12 @@ def public_data(ids=[1]):
     nutrients = ['STARCH', 'SUGAR', 'FIBC', 'FAT', 'PROT']
     df = pd.read_csv('data/public_dataset.csv')
     for nutrient in nutrients:
-        df[nutrient] = minmax_scale(df[nutrient])
+        df[nutrient] /= np.mean(df[nutrient], axis=0)
+        df[nutrient] = unit_scaled(df[nutrient])
     df = df[df['id'].isin(ids)]
     time_mean = df['time'].mean()
     df['time'] = df['time'] - time_mean 
-    mask = df[nutrients].notna().any(1)
+    mask = df[nutrients].notna().any(1) & (df[nutrients] > 0.1).any(1)
     df_meal = df.loc[mask, nutrients + ['time', 'id']]
     df_meal = df_meal.rename({'time': 'meal_timing'})
     df = df[df['glucose'].notna()]
@@ -107,6 +145,7 @@ def public_data2(ids=[0]):
         df[nutrient] = minmax_scale(df[nutrient])
     df = df[df['id'].isin(ids)]
     df['time'] = df['time']/60
+    print('small filter', (df[nutrients] > 0).any(0))
     mask = df[nutrients].notna().any(1)
     df_meal = df.loc[mask, nutrients + ['time', 'id']]
     df = df[df['glucose'].notna()]
